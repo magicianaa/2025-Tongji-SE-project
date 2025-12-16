@@ -99,3 +99,8 @@ Thumbs.db
 # 虚拟机崩溃日志
 hs_err_pid*
 replay_pid*
+
+# ===== Docker 相关 =====
+.dockerignore
+Dockerfile.dev
+*.dockerfile.backup

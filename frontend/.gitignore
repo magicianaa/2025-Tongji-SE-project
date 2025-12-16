@@ -112,3 +112,9 @@ cypress/screenshots/
 
 # Storybook（如果使用）
 storybook-static/
+
+# ===== Docker 相关 =====
+.dockerignore
+Dockerfile.dev
+nginx.conf.dev
+*.dockerfile.backup

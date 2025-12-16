@@ -123,5 +123,14 @@ test-data/
 *.backup
 *-backup
 
+# ===== Docker 相关 =====
+# Docker 构建产物
+.dockerignore
+docker-compose.override.yml
+*.dockerfile
+
+# Docker 数据卷（如果本地挂载）
+.docker/
+
 # 项目特定的忽略文件
 # （如果有其他需要忽略的文件，在下面添加）
