@@ -1,0 +1,114 @@
+# ==========================================
+# Vue 3 + Vite 前端 - .gitignore
+# ==========================================
+
+# ===== 依赖 =====
+node_modules/
+jspm_packages/
+bower_components/
+
+# ===== 构建产物 =====
+dist/
+dist-ssr/
+build/
+.output/
+.nuxt/
+.next/
+
+# ===== 日志文件 =====
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===== 运行时数据 =====
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ===== 测试覆盖率 =====
+coverage/
+.nyc_output/
+*.lcov
+
+# ===== IDE 和编辑器 =====
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json.example
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# WebStorm
+.idea/
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Visual Studio
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== 环境变量 =====
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ===== Vite 相关 =====
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# ===== 缓存和临时文件 =====
+.cache/
+.temp/
+.tmp/
+*.local
+*.tmp
+*.swp
+*.swo
+*~
+
+# ===== OS 文件 =====
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ===== 其他 =====
+# 锁文件（根据团队需求选择保留或忽略）
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# 热更新文件
+*.hot-update.js
+*.hot-update.json
+
+# TypeScript 相关（如果使用）
+*.tsbuildinfo
+
+# Cypress 测试（如果使用）
+cypress/videos/
+cypress/screenshots/
+
+# Storybook（如果使用）
+storybook-static/

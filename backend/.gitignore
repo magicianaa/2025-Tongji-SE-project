@@ -1,0 +1,101 @@
+# ==========================================
+# Spring Boot 后端 - .gitignore
+# ==========================================
+
+# ===== Maven 构建 =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ===== IDE 文件 =====
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# VSCode
+.vscode/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ===== Spring Boot 相关 =====
+# 日志文件
+logs/
+*.log
+*.log.*
+spring.log
+
+# 临时文件
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# H2 数据库文件（如果使用）
+*.db
+*.mv.db
+*.trace.db
+
+# ===== 应用配置 =====
+# 敏感配置文件（生产环境）
+application-prod.yml
+application-prod.properties
+application-local.yml
+application-local.properties
+
+# 环境变量
+.env
+.env.local
+
+# ===== 测试相关 =====
+# JUnit / 测试覆盖率
+.factorypath
+*.factorypath
+coverage/
+.jacoco/
+
+# ===== OS 文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 其他 =====
+# 编译后的字节码
+*.class
+
+# 虚拟机崩溃日志
+hs_err_pid*
+replay_pid*
