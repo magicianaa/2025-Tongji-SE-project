@@ -248,9 +248,25 @@ const handleLogin = async () => {
         
         ElMessage.success('登录成功')
         
-        // 跳转到重定向页面或首页
-        const redirect = route.query.redirect || '/dashboard'
-        router.push(redirect)
+        // 根据用户角色跳转到对应的首页
+        const userType = data.userType
+        let targetRoute = '/guest/home' // 默认跳转到住客首页
+        
+        if (userType === 'ADMIN') {
+          targetRoute = '/admin/dashboard'
+        } else if (userType === 'STAFF') {
+          targetRoute = '/staff/workbench'
+        } else if (userType === 'GUEST') {
+          targetRoute = '/guest/home'
+        }
+        
+        // 如果有重定向参数且用户有权限访问，则使用重定向地址
+        const redirect = route.query.redirect
+        if (redirect) {
+          router.push(redirect)
+        } else {
+          router.push(targetRoute)
+        }
       } catch (error) {
         console.error('登录失败：', error)
       } finally {

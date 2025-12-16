@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { ElMessage } from 'element-plus'
 
 const routes = [
+  // 公共路由
   {
     path: '/login',
     name: 'Login',
@@ -9,45 +11,123 @@ const routes = [
     meta: { title: '登录' }
   },
   {
-    path: '/',
-    component: () => import('@/views/Dashboard.vue'),
-    meta: { requiresAuth: true },
-    redirect: '/dashboard',
-    children: [
-      {
-        path: '/dashboard',
-        name: 'Home',
-        component: () => import('@/views/Home.vue'),
-        meta: { 
-          title: '控制台',
-          requiresAuth: true 
-        }
-      },
-      {
-        path: '/rooms',
-        name: 'RoomManagement',
-        component: () => import('@/views/RoomManagement.vue'),
-        meta: { 
-          title: '房态管理',
-          requiresAuth: true 
-        }
-      },
-      {
-        path: '/hardware',
-        name: 'HardwareMonitor',
-        component: () => import('@/views/HardwareMonitor.vue'),
-        meta: { 
-          title: '硬件监控',
-          requiresAuth: true 
-        }
-      }
-    ]
+    path: '/403',
+    name: 'Forbidden',
+    component: () => import('@/views/NotFound.vue'),
+    meta: { title: '无权访问' }
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
     meta: { title: '404' }
+  },
+
+  // 管理端路由（ADMIN）
+  {
+    path: '/admin',
+    component: () => import('@/layouts/AdminLayout.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'] },
+    redirect: '/admin/dashboard',
+    children: [
+      {
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: () => import('@/views/admin/Dashboard.vue'),
+        meta: { 
+          title: '管理看板',
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }
+      }
+    ]
+  },
+
+  // 前台管理端路由（STAFF）
+  {
+    path: '/staff',
+    component: () => import('@/layouts/StaffLayout.vue'),
+    meta: { requiresAuth: true, roles: ['STAFF'] },
+    redirect: '/staff/workbench',
+    children: [
+      {
+        path: 'workbench',
+        name: 'StaffWorkbench',
+        component: () => import('@/views/staff/Workbench.vue'),
+        meta: { 
+          title: '前台工作台',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
+        path: 'rooms',
+        name: 'StaffRoomManagement',
+        component: () => import('@/views/staff/RoomManagement.vue'),
+        meta: { 
+          title: '房态管理',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
+        path: 'hardware',
+        name: 'StaffHardwareMonitor',
+        component: () => import('@/views/staff/HardwareMonitor.vue'),
+        meta: { 
+          title: '硬件监控',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      }
+    ]
+  },
+
+  // 住客端路由（GUEST）
+  {
+    path: '/guest',
+    component: () => import('@/layouts/GuestLayout.vue'),
+    meta: { requiresAuth: true, roles: ['GUEST'] },
+    redirect: '/guest/home',
+    children: [
+      {
+        path: 'home',
+        name: 'GuestHome',
+        component: () => import('@/views/guest/Home.vue'),
+        meta: { 
+          title: '住客首页',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'booking',
+        name: 'GuestBooking',
+        component: () => import('@/views/guest/Booking.vue'),
+        meta: { 
+          title: '预订房间',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      }
+    ]
+  },
+
+  // 根路径重定向（根据角色）
+  {
+    path: '/',
+    redirect: () => {
+      const userStore = useUserStore()
+      const userType = userStore.userInfo?.userType || 'GUEST'
+      
+      if (userType === 'ADMIN') {
+        return '/admin/dashboard'
+      } else if (userType === 'STAFF') {
+        return '/staff/workbench'
+      } else {
+        return '/guest/home'
+      }
+    }
   }
 ]
 
@@ -56,7 +136,7 @@ const router = createRouter({
   routes
 })
 
-// 全局前置守卫
+// 全局前置守卫 - RBAC鉴权
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   
@@ -65,15 +145,41 @@ router.beforeEach((to, from, next) => {
   
   // 检查路由是否需要登录
   if (to.meta.requiresAuth) {
-    if (userStore.isLoggedIn()) {
-      next()
-    } else {
+    if (!userStore.isLoggedIn()) {
+      // 未登录，跳转到登录页
       next({
         path: '/login',
         query: { redirect: to.fullPath }
       })
+      return
     }
+
+    // 已登录，检查角色权限
+    const userType = userStore.userInfo?.userType
+    const requiredRoles = to.meta.roles
+
+    if (requiredRoles && requiredRoles.length > 0) {
+      if (!requiredRoles.includes(userType)) {
+        // 无权限，提示并跳转到403或用户首页
+        ElMessage.error('您没有权限访问该页面')
+        
+        // 跳转到对应角色的首页
+        if (userType === 'ADMIN') {
+          next('/admin/dashboard')
+        } else if (userType === 'STAFF') {
+          next('/staff/workbench')
+        } else if (userType === 'GUEST') {
+          next('/guest/home')
+        } else {
+          next('/403')
+        }
+        return
+      }
+    }
+
+    next()
   } else {
+    // 不需要登录的路由，直接放行
     next()
   }
 })
