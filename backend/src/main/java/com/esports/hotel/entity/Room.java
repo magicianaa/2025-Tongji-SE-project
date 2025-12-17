@@ -32,7 +32,7 @@ public class Room implements Serializable {
     private Integer floor;
 
     /**
-     * 房态：VACANT, OCCUPIED, DIRTY, MAINTENANCE
+     * 房态：VACANT, OCCUPIED, CLEANING, MAINTENANCE
      */
     private String status;
 
@@ -40,6 +40,16 @@ public class Room implements Serializable {
      * 每小时价格
      */
     private BigDecimal pricePerHour;
+
+    /**
+     * 最大容纳人数
+     */
+    private Integer maxOccupancy;
+
+    /**
+     * 当前入住人数
+     */
+    private Integer currentOccupancy;
 
     /**
      * 设施配置（JSON格式）

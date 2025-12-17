@@ -6,9 +6,12 @@ import com.esports.hotel.common.ResultCode;
 import com.esports.hotel.dto.CheckInRequest;
 import com.esports.hotel.dto.CheckInResponse;
 import com.esports.hotel.dto.CheckOutResponse;
+import com.esports.hotel.dto.RoomVO;
+import com.esports.hotel.entity.Booking;
 import com.esports.hotel.entity.CheckInRecord;
 import com.esports.hotel.entity.Guest;
 import com.esports.hotel.entity.Room;
+import com.esports.hotel.mapper.BookingMapper;
 import com.esports.hotel.mapper.CheckInRecordMapper;
 import com.esports.hotel.mapper.GuestMapper;
 import com.esports.hotel.mapper.RoomMapper;
@@ -36,88 +39,23 @@ public class RoomService {
     private final RoomMapper roomMapper;
     private final GuestMapper guestMapper;
     private final CheckInRecordMapper checkInRecordMapper;
+    private final BookingMapper bookingMapper;
     private final JwtUtil jwtUtil;
 
     /**
-     * 办理入住
+     * 办理入住 - 此方法已废弃
+     * 新的多人入住功能请使用 CheckInService.checkIn()
+     * 
+     * @deprecated 已由 CheckInService.checkIn() 替代
      */
+    /*
+    @Deprecated
     @Transactional(rollbackFor = Exception.class)
     public CheckInResponse checkIn(CheckInRequest request) {
-        // 1. 验证房间状态
-        Room room = roomMapper.selectById(request.getRoomId());
-        if (room == null) {
-            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "房间不存在");
-        }
-        if (!"VACANT".equals(room.getStatus())) {
-            throw new BusinessException(ResultCode.ROOM_NOT_AVAILABLE);
-        }
-
-        // 2. 验证住客信息
-        Guest guest = guestMapper.selectById(request.getGuestId());
-        if (guest == null) {
-            throw new BusinessException(ResultCode.USER_NOT_FOUND);
-        }
-
-        // 3. 检查是否已有未退房的记录
-        LambdaQueryWrapper<CheckInRecord> existingWrapper = new LambdaQueryWrapper<>();
-        existingWrapper.eq(CheckInRecord::getGuestId, request.getGuestId())
-                      .isNull(CheckInRecord::getActualCheckout);
-        if (checkInRecordMapper.selectCount(existingWrapper) > 0) {
-            throw new BusinessException(ResultCode.CHECKIN_ALREADY_EXISTS.getCode(), "您还有未退房的订单");
-        }
-
-        // 4. 更新住客实名信息（如果提供）
-        if (request.getRealName() != null) {
-            guest.setRealName(request.getRealName());
-        }
-        if (request.getIdentityCard() != null) {
-            // TODO: 实际生产环境需使用 AES 加密
-            guest.setIdentityCard(request.getIdentityCard());
-        }
-        guestMapper.updateById(guest);
-
-        // 5. 创建入住记录
-        CheckInRecord record = new CheckInRecord();
-        record.setBookingId(request.getBookingId());
-        record.setRoomId(request.getRoomId());
-        record.setGuestId(request.getGuestId());
-        record.setExpectedCheckout(request.getExpectedCheckout());
-        record.setIsGamingAuthActive(true);  // 开启客房权限
-        record.setRoomFee(BigDecimal.ZERO);
-        record.setDamageCompensation(BigDecimal.ZERO);
-        record.setPointsDeduction(0);
-        record.setFinalAmount(BigDecimal.ZERO);
-        record.setPaymentStatus("UNPAID");
-        record.setNotes(request.getSpecialRequests());
-        checkInRecordMapper.insert(record);
-
-        // 6. 更新房态为"入住中"
-        room.setStatus("OCCUPIED");
-        roomMapper.updateById(room);
-
-        // 7. 生成客房权限 Token（二次鉴权）
-        String roomAuthToken = jwtUtil.generateRoomAuthToken(
-                guest.getUserId(), 
-                record.getRecordId(), 
-                room.getRoomId()
-        );
-
-        // 8. 构造响应
-        CheckInResponse response = new CheckInResponse();
-        response.setRecordId(record.getRecordId());
-        response.setRoomNo(room.getRoomNo());
-        response.setRoomId(room.getRoomId());
-        response.setActualCheckin(record.getActualCheckin());
-        response.setExpectedCheckout(record.getExpectedCheckout());
-        response.setPricePerHour(room.getPricePerHour());
-        response.setRoomAuthToken(roomAuthToken);
-        response.setMessage("入住成功！请使用 Room-Auth-Token 访问客房服务");
-
-        log.info("办理入住成功: recordId={}, guestId={}, roomNo={}", 
-                 record.getRecordId(), request.getGuestId(), room.getRoomNo());
-        
-        return response;
+        // 此方法已被 CheckInService 的多人入住功能替代
+        // 保留注释以供参考
     }
+    */
 
     /**
      * 办理退房
@@ -164,8 +102,9 @@ public class RoomService {
         record.setIsGamingAuthActive(false);  // 立即回收客房权限
         checkInRecordMapper.updateById(record);
 
-        // 6. 更新房态为"脏房"
-        room.setStatus("DIRTY");
+        // 6. 更新房态为"待清洁"，并重置入住人数
+        room.setStatus("CLEANING");
+        room.setCurrentOccupancy(0);
         roomMapper.updateById(room);
 
         // 7. 更新住客累计入住天数和积分
@@ -213,6 +152,41 @@ public class RoomService {
     }
 
     /**
+     * 获取包含预订信息的房间列表
+     */
+    public List<RoomVO> getAllRoomsWithBooking() {
+        List<Room> rooms = roomMapper.selectList(null);
+        LocalDateTime now = LocalDateTime.now();
+        
+        return rooms.stream().map(room -> {
+            RoomVO vo = new RoomVO();
+            vo.setRoomId(room.getRoomId());
+            vo.setRoomNo(room.getRoomNo());
+            vo.setRoomType(room.getRoomType());
+            vo.setFloor(room.getFloor());
+            vo.setStatus(room.getStatus());
+            vo.setPricePerHour(room.getPricePerHour());
+            vo.setMaxOccupancy(room.getMaxOccupancy());
+            vo.setCurrentOccupancy(room.getCurrentOccupancy());
+            vo.setFacilityConfig(room.getFacilityConfig());
+            vo.setIsPremium(room.getIsPremium());
+            
+            // 查询是否有有效预订（当前时间段内的预订）
+            Booking booking = bookingMapper.selectCurrentBookingForRoom(room.getRoomId());
+            
+            if (booking != null) {
+                vo.setHasBooking(true);
+                vo.setBookingId(booking.getBookingId());
+                vo.setBookingStatus(booking.getStatus());
+            } else {
+                vo.setHasBooking(false);
+            }
+            
+            return vo;
+        }).toList();
+    }
+
+    /**
      * 查询空闲房间
      */
     public List<Room> getVacantRooms() {
@@ -237,5 +211,62 @@ public class RoomService {
         LambdaQueryWrapper<CheckInRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.isNull(CheckInRecord::getActualCheckout);
         return checkInRecordMapper.selectList(wrapper);
+    }
+
+    /**
+     * 打扫完毕 - CLEANING -> VACANT
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void markCleaned(Long roomId) {
+        Room room = roomMapper.selectById(roomId);
+        if (room == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "房间不存在");
+        }
+        if (!"CLEANING".equals(room.getStatus())) {
+            throw new BusinessException("当前房间状态不是待清洁，无法标记为已打扫");
+        }
+        
+        room.setStatus("VACANT");
+        room.setCurrentOccupancy(0);
+        roomMapper.updateById(room);
+        log.info("房间打扫完毕: roomNo={}, {} -> VACANT", room.getRoomNo(), "CLEANING");
+    }
+
+    /**
+     * 维修完成 - MAINTENANCE -> VACANT
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void markRepaired(Long roomId) {
+        Room room = roomMapper.selectById(roomId);
+        if (room == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "房间不存在");
+        }
+        if (!"MAINTENANCE".equals(room.getStatus())) {
+            throw new BusinessException("当前房间状态不是维修中，无法标记为已维修");
+        }
+        
+        room.setStatus("VACANT");
+        room.setCurrentOccupancy(0);
+        roomMapper.updateById(room);
+        log.info("房间维修完成: roomNo={}, MAINTENANCE -> VACANT", room.getRoomNo());
+    }
+
+    /**
+     * 设置维修中 - VACANT/CLEANING -> MAINTENANCE
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void markMaintenance(Long roomId, String reason) {
+        Room room = roomMapper.selectById(roomId);
+        if (room == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "房间不存在");
+        }
+        if ("OCCUPIED".equals(room.getStatus())) {
+            throw new BusinessException("房间当前有客人入住，无法设置为维修中");
+        }
+        
+        room.setStatus("MAINTENANCE");
+        room.setCurrentOccupancy(0);
+        roomMapper.updateById(room);
+        log.info("房间设置为维修中: roomNo={}, reason={}", room.getRoomNo(), reason);
     }
 }

@@ -5,6 +5,7 @@ import com.esports.hotel.common.Result;
 import com.esports.hotel.dto.CheckInRequest;
 import com.esports.hotel.dto.CheckInResponse;
 import com.esports.hotel.dto.CheckOutResponse;
+import com.esports.hotel.dto.RoomVO;
 import com.esports.hotel.entity.CheckInRecord;
 import com.esports.hotel.entity.Room;
 import com.esports.hotel.service.RoomService;
@@ -28,10 +29,10 @@ public class RoomController {
 
     private final RoomService roomService;
 
-    @Operation(summary = "查询所有房间", description = "查看房态看板（管理端）")
+    @Operation(summary = "查询所有房间（包含预订信息）", description = "查看房态看板，包含预订状态")
     @GetMapping
-    public Result<List<Room>> getAllRooms() {
-        return Result.success(roomService.getAllRooms());
+    public Result<List<RoomVO>> getAllRooms() {
+        return Result.success(roomService.getAllRoomsWithBooking());
     }
 
     @Operation(summary = "查询空闲房间", description = "预订时选择房间")
@@ -46,19 +47,20 @@ public class RoomController {
         return Result.success(roomService.getRoomsByStatus(status));
     }
 
-    @Operation(summary = "办理入住", description = "前台办理入住，生成入住记录并发放客房权限Token")
+    /**
+     * 旧的单人入住接口已废弃
+     * 新的多人入住功能请使用 POST /api/checkin (CheckInController)
+     * 
+     * @deprecated 已由 CheckInController.checkIn() 替代
+     */
+    /*
+    @Operation(summary = "办理入住（已废弃）", description = "请使用 POST /api/checkin")
+    @Deprecated
     @PostMapping("/checkin")
     public Result<CheckInResponse> checkIn(@Valid @RequestBody CheckInRequest request) {
-        CheckInResponse response = roomService.checkIn(request);
-        return Result.success(response, "入住成功");
+        throw new BusinessException("此接口已废弃，请使用 POST /api/checkin 多人入住接口");
     }
-
-    @Operation(summary = "办理入住(兼容旧接口)", description = "前台办理入住，生成入住记录并发放客房权限Token")
-    @PostMapping("/check-in")
-    public Result<CheckInResponse> checkInCompat(@Valid @RequestBody CheckInRequest request) {
-        CheckInResponse response = roomService.checkIn(request);
-        return Result.success(response, "入住成功");
-    }
+    */
 
     @Operation(summary = "办理退房", description = "前台办理退房，汇总账单并回收客房权限")
     @PostMapping("/checkout/{recordId}")
@@ -90,5 +92,28 @@ public class RoomController {
     @GetMapping("/test-room-auth")
     public Result<String> testRoomAuth() {
         return Result.success("客房权限验证通过！您可以访问房间控制、点餐等服务");
+    }
+
+    @Operation(summary = "标记房间已打扫", description = "前台标记房间清洁完成，状态从CLEANING变为VACANT")
+    @PostMapping("/{roomId}/mark-cleaned")
+    public Result<Void> markCleaned(@Parameter(description = "房间ID") @PathVariable Long roomId) {
+        roomService.markCleaned(roomId);
+        return Result.success(null, "已标记为打扫完毕");
+    }
+
+    @Operation(summary = "标记房间已维修", description = "前台标记房间维修完成，状态从MAINTENANCE变为VACANT")
+    @PostMapping("/{roomId}/mark-repaired")
+    public Result<Void> markRepaired(@Parameter(description = "房间ID") @PathVariable Long roomId) {
+        roomService.markRepaired(roomId);
+        return Result.success(null, "已标记为维修完成");
+    }
+
+    @Operation(summary = "设置房间为维修中", description = "前台设置房间为维修状态")
+    @PostMapping("/{roomId}/mark-maintenance")
+    public Result<Void> markMaintenance(
+            @Parameter(description = "房间ID") @PathVariable Long roomId,
+            @Parameter(description = "维修原因") @RequestParam(required = false) String reason) {
+        roomService.markMaintenance(roomId, reason);
+        return Result.success(null, "已设置为维修中");
     }
 }

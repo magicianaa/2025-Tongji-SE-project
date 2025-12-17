@@ -25,7 +25,4 @@ public class RegisterRequest {
     @NotBlank(message = "验证码不能为空")
     @Schema(description = "短信验证码", example = "123456")
     private String smsCode;
-
-    @Schema(description = "真实姓名", example = "张三")
-    private String realName;
 }

@@ -7,33 +7,52 @@
         </div>
       </template>
 
-      <el-form :model="bookingForm" label-width="100px">
-        <el-form-item label="入住日期">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="预订房间" name="booking">
+          <el-form :model="bookingForm" :rules="bookingRules" ref="bookingFormRef" label-width="120px">
+        <el-form-item label="入住日期" prop="checkInDate">
           <el-date-picker
             v-model="bookingForm.checkInDate"
             type="date"
             placeholder="选择入住日期"
             :disabled-date="disabledBeforeToday"
             style="width: 100%;"
+            @change="loadAvailableRooms"
           />
         </el-form-item>
 
-        <el-form-item label="退房日期">
+        <el-form-item label="退房日期" prop="checkOutDate">
           <el-date-picker
             v-model="bookingForm.checkOutDate"
             type="date"
             placeholder="选择退房日期"
             :disabled-date="disabledBeforeCheckIn"
             style="width: 100%;"
+            @change="loadAvailableRooms"
           />
         </el-form-item>
 
-        <el-form-item label="房型">
-          <el-select v-model="bookingForm.roomType" placeholder="选择房型" style="width: 100%;">
-            <el-option label="单人电竞房" value="SINGLE" />
-            <el-option label="双人电竞房" value="DOUBLE" />
-            <el-option label="豪华电竞套房" value="SUITE" />
-          </el-select>
+        <el-form-item label="主住客姓名" prop="mainGuestName">
+          <el-input
+            v-model="bookingForm.mainGuestName"
+            placeholder="请输入主住客姓名（用于入住验证）"
+            maxlength="20"
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="特殊要求">
+          <el-input
+            v-model="bookingForm.specialRequests"
+            type="textarea"
+            :rows="3"
+            placeholder="有任何特殊要求请在此说明"
+            maxlength="200"
+            show-word-limit
+          />
         </el-form-item>
       </el-form>
 
@@ -48,38 +67,128 @@
             <el-card shadow="hover" class="room-card">
               <div class="room-info">
                 <div class="room-no">{{ room.roomNo }}</div>
-                <div class="room-type">{{ room.roomTypeName }}</div>
-                <div class="room-price">¥{{ room.pricePerNight }}/晚</div>
-                <el-button type="primary" @click="handleBook(room)" style="width: 100%; margin-top: 10px;">
-                  立即预订
+                <div class="room-type">{{ getRoomTypeName(room.roomType) }}</div>
+                <div class="room-price">¥{{ (room.pricePerHour * 24).toFixed(0) }}/晚</div>
+                <div class="room-status" v-if="room.hasBooking">
+                  <el-tag type="warning" size="small">已有预订</el-tag>
+                </div>
+                <el-button 
+                  type="primary" 
+                  @click="handleBook(room)" 
+                  :disabled="room.hasBooking"
+                  style="width: 100%; margin-top: 10px;"
+                  :loading="bookingLoading"
+                >
+                  {{ room.hasBooking ? '已被预订' : '立即预订' }}
                 </el-button>
               </div>
             </el-card>
           </el-col>
         </el-row>
       </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="我的预订" name="myBookings">
+          <div class="my-bookings">
+            <el-button type="primary" @click="loadMyBookings" :loading="loadingBookings" style="margin-bottom: 20px;">
+              <el-icon><Refresh /></el-icon> 刷新
+            </el-button>
+
+            <el-empty description="暂无预订记录" v-if="myBookings.length === 0 && !loadingBookings" />
+
+            <el-table :data="myBookings" v-else stripe style="width: 100%;">
+              <el-table-column prop="roomNo" label="房间号" width="100" />
+              <el-table-column label="房型" width="150">
+                <template #default="{ row }">
+                  {{ getRoomTypeName(row.roomType) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="mainGuestName" label="主住客" width="120" />
+              <el-table-column label="预订时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.bookingTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="入住日期" width="120">
+                <template #default="{ row }">
+                  {{ formatDate(row.plannedCheckin) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="退房日期" width="120">
+                <template #default="{ row }">
+                  {{ formatDate(row.plannedCheckout) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="getStatusType(row.status)">
+                    {{ getStatusName(row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="押金" width="100">
+                <template #default="{ row }">
+                  ¥{{ row.depositAmount }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" fixed="right" width="120">
+                <template #default="{ row }">
+                  <el-button 
+                    type="danger" 
+                    size="small" 
+                    @click="handleCancelBooking(row)"
+                    :disabled="row.status === 'CANCELLED' || row.status === 'CHECKED_IN'"
+                  >
+                    {{ row.status === 'CANCELLED' ? '已取消' : row.status === 'CHECKED_IN' ? '已入住' : '取消预订' }}
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, Refresh } from '@element-plus/icons-vue'
+import axios from 'axios'
 
+const activeTab = ref('booking')
+const bookingFormRef = ref(null)
 const bookingForm = reactive({
   checkInDate: null,
   checkOutDate: null,
-  roomType: 'SINGLE'
+  mainGuestName: '',
+  specialRequests: ''
 })
 
-const availableRooms = ref([
-  { roomId: 1, roomNo: '101', roomTypeName: '单人电竞房', pricePerNight: 299 },
-  { roomId: 2, roomNo: '102', roomTypeName: '单人电竞房', pricePerNight: 299 },
-  { roomId: 3, roomNo: '201', roomTypeName: '双人电竞房', pricePerNight: 399 }
-])
+const myBookings = ref([])
+const loadingBookings = ref(false)
+
+const bookingRules = {
+  checkInDate: [
+    { required: true, message: '请选择入住日期', trigger: 'change' }
+  ],
+  checkOutDate: [
+    { required: true, message: '请选择退房日期', trigger: 'change' }
+  ],
+  mainGuestName: [
+    { required: true, message: '请输入主住客姓名', trigger: 'blur' },
+    { min: 2, max: 20, message: '姓名长度在2-20个字符', trigger: 'blur' }
+  ]
+}
+
+const availableRooms = ref([])
+const bookingLoading = ref(false)
 
 const disabledBeforeToday = (date) => {
-  return date < new Date(new Date().setHours(0, 0, 0, 0))
+  // 允许选择今天及以后的日期
+  const today = new Date(new Date().setHours(0, 0, 0, 0))
+  return date < today
 }
 
 const disabledBeforeCheckIn = (date) => {
@@ -87,10 +196,241 @@ const disabledBeforeCheckIn = (date) => {
   return date <= bookingForm.checkInDate
 }
 
-const handleBook = (room) => {
-  ElMessage.success(`预订房间 ${room.roomNo} 成功！`)
-  // TODO: 调用预订API
+const getRoomTypeName = (type) => {
+  const typeMap = {
+    'SINGLE': '单人电竞房',
+    'DOUBLE': '双人电竞房',
+    'FIVE_PLAYER': '五黑开黑房',
+    'VIP': '豪华电竞套房'
+  }
+  return typeMap[type] || type
 }
+
+const loadAvailableRooms = async () => {
+  if (!bookingForm.checkInDate || !bookingForm.checkOutDate) {
+    availableRooms.value = []
+    return
+  }
+
+  try {
+    const response = await axios.get('/api/rooms', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    if (response.data.code === 200) {
+      // 筛选VACANT和已预订的房间
+      availableRooms.value = response.data.data.filter(room => 
+        room.status === 'VACANT'
+      )
+    }
+  } catch (error) {
+    console.error('加载房间失败:', error)
+    ElMessage.error('加载可用房间失败')
+  }
+}
+
+const handleBook = async (room) => {
+  // 验证表单
+  if (!bookingFormRef.value) return
+  
+  try {
+    await bookingFormRef.value.validate()
+  } catch {
+    ElMessage.warning('请完整填写预订信息')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认预订房间 ${room.roomNo}？<br>
+      入住日期：${formatDate(bookingForm.checkInDate)}<br>
+      退房日期：${formatDate(bookingForm.checkOutDate)}<br>
+      主住客：${bookingForm.mainGuestName}`,
+      '确认预订',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        dangerouslyUseHTMLString: true,
+        type: 'info'
+      }
+    )
+
+    bookingLoading.value = true
+    
+    // 从localStorage获取用户手机号（用户名就是手机号）
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    const contactPhone = userInfo.username || ''
+    
+    if (!contactPhone) {
+      ElMessage.error('无法获取用户手机号，请重新登录')
+      bookingLoading.value = false
+      return
+    }
+    
+    const bookingData = {
+      roomId: room.roomId,
+      plannedCheckin: formatDate(bookingForm.checkInDate),
+      plannedCheckout: formatDate(bookingForm.checkOutDate),
+      mainGuestName: bookingForm.mainGuestName.trim(),
+      contactPhone: contactPhone,
+      specialRequests: bookingForm.specialRequests.trim() || null
+    }
+
+    const response = await axios.post('/api/bookings', bookingData, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.data.code === 200) {
+      ElMessage.success('预订成功！')
+      // 重置表单
+      bookingForm.mainGuestName = ''
+      bookingForm.specialRequests = ''
+      // 重新加载房间列表以更新预订状态
+      await loadAvailableRooms()
+      // 提示用户可以查看预订
+      ElMessageBox.confirm(
+        '预订已成功创建，是否前往查看我的预订？',
+        '预订成功',
+        {
+          confirmButtonText: '查看预订',
+          cancelButtonText: '继续预订',
+          type: 'success'
+        }
+      ).then(() => {
+        activeTab.value = 'myBookings'
+        loadMyBookings()
+      }).catch(() => {
+        // 用户选择继续预订，不做操作
+      })
+    } else {
+      ElMessage.error(response.data.message || '预订失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('预订失败:', error)
+      ElMessage.error(error.response?.data?.message || '预订失败，请稍后重试')
+    }
+  } finally {
+    bookingLoading.value = false
+  }
+}
+
+const formatDate = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDateTime = (datetime) => {
+  if (!datetime) return ''
+  const d = new Date(datetime)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hour = String(d.getHours()).padStart(2, '0')
+  const minute = String(d.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}`
+}
+
+const getStatusType = (status) => {
+  const typeMap = {
+    'PENDING': 'info',
+    'CONFIRMED': 'success',
+    'CHECKED_IN': 'warning',
+    'CANCELLED': 'danger'
+  }
+  return typeMap[status] || 'info'
+}
+
+const getStatusName = (status) => {
+  const nameMap = {
+    'PENDING': '待确认',
+    'CONFIRMED': '已确认',
+    'CHECKED_IN': '已入住',
+    'CANCELLED': '已取消'
+  }
+  return nameMap[status] || status
+}
+
+const loadMyBookings = async () => {
+  loadingBookings.value = true
+  try {
+    const response = await axios.get('/api/bookings/my', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    if (response.data.code === 200) {
+      myBookings.value = response.data.data || []
+    } else {
+      ElMessage.error('加载预订列表失败')
+    }
+  } catch (error) {
+    console.error('加载预订列表失败:', error)
+    ElMessage.error('加载预订列表失败')
+  } finally {
+    loadingBookings.value = false
+  }
+}
+
+const handleCancelBooking = async (booking) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认取消预订？<br>
+      房间：${booking.roomNo}<br>
+      入住日期：${formatDate(booking.plannedCheckin)}<br>
+      退房日期：${formatDate(booking.plannedCheckout)}`,
+      '取消预订',
+      {
+        confirmButtonText: '确认取消',
+        cancelButtonText: '我再想想',
+        dangerouslyUseHTMLString: true,
+        type: 'warning'
+      }
+    )
+
+    const response = await axios.delete(`/api/bookings/${booking.bookingId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (response.data.code === 200) {
+      ElMessage.success('预订已取消')
+      loadMyBookings()
+      // 如果在预订tab，也刷新房间列表
+      if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+        loadAvailableRooms()
+      }
+    } else {
+      ElMessage.error(response.data.message || '取消失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消预订失败:', error)
+      ElMessage.error(error.response?.data?.message || '取消失败，请稍后重试')
+    }
+  }
+}
+
+const handleTabChange = (tabName) => {
+  if (tabName === 'myBookings') {
+    loadMyBookings()
+  }
+}
+
+onMounted(() => {
+  // 初始化时不加载，等用户选择日期后再加载
+})
 </script>
 
 <style scoped>
@@ -132,5 +472,15 @@ const handleBook = (room) => {
   font-size: 20px;
   color: #f56c6c;
   font-weight: bold;
+}
+
+.my-bookings {
+  padding: 20px 0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

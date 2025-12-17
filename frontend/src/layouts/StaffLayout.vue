@@ -40,6 +40,10 @@
               <el-icon><HomeFilled /></el-icon>
               <span>工作台</span>
             </el-menu-item>
+            <el-menu-item index="/staff/checkin">
+              <el-icon><User /></el-icon>
+              <span>入住登记</span>
+            </el-menu-item>
             <el-menu-item index="/staff/rooms">
               <el-icon><House /></el-icon>
               <span>房态管理</span>

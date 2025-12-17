@@ -64,10 +64,10 @@ public class AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(user);
 
-        // 4. 创建住客扩展信息
+        // 4. 创建住客扩展信息（姓名和身份证在首次入住时绑定）
         Guest guest = new Guest();
         guest.setUserId(user.getUserId());
-        guest.setRealName(request.getRealName());
+        guest.setRealName(null); // 入住时绑定
         guest.setMemberLevel("BRONZE"); // 默认青铜会员
         guest.setExperiencePoints(0);
         guest.setCurrentPoints(0);

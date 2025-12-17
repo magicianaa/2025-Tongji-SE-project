@@ -28,8 +28,8 @@ CREATE TABLE `tb_user` (
 CREATE TABLE `tb_guest` (
   `guest_id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL COMMENT '关联用户表',
-  `real_name` VARCHAR(64) DEFAULT NULL COMMENT '真实姓名',
-  `identity_card` VARCHAR(255) DEFAULT NULL COMMENT '身份证号（AES加密）',
+  `real_name` VARCHAR(64) DEFAULT NULL COMMENT '真实姓名（入住时绑定）',
+  `identity_card` VARCHAR(255) DEFAULT NULL COMMENT '身份证号（入住时绑定，AES加密）',
   `member_level` ENUM('BRONZE', 'SILVER', 'GOLD', 'PLATINUM') DEFAULT 'BRONZE' COMMENT '会员等级',
   `experience_points` INT DEFAULT 0 COMMENT '经验值（用于升级）',
   `current_points` INT DEFAULT 0 COMMENT '可用积分余额',
@@ -38,7 +38,7 @@ CREATE TABLE `tb_guest` (
   PRIMARY KEY (`guest_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
   CONSTRAINT `fk_guest_user` FOREIGN KEY (`user_id`) REFERENCES `tb_user` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='住客信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='住客信息表（身份信息在首次入住时绑定）';
 
 -- 员工扩展表
 CREATE TABLE `tb_staff` (
@@ -63,8 +63,10 @@ CREATE TABLE `tb_room` (
   `room_no` VARCHAR(16) NOT NULL COMMENT '房间号（如301）',
   `room_type` ENUM('SINGLE', 'DOUBLE', 'FIVE_PLAYER', 'VIP') NOT NULL COMMENT '房型',
   `floor` TINYINT NOT NULL COMMENT '楼层',
-  `status` ENUM('VACANT', 'OCCUPIED', 'DIRTY', 'MAINTENANCE') DEFAULT 'VACANT' COMMENT '房态',
+  `status` ENUM('VACANT', 'OCCUPIED', 'CLEANING', 'MAINTENANCE') DEFAULT 'VACANT' COMMENT '房态',
   `price_per_hour` DECIMAL(10, 2) NOT NULL COMMENT '每小时价格',
+  `max_occupancy` TINYINT NOT NULL DEFAULT 1 COMMENT '最大容纳人数（单人1、双人2、五黑5）',
+  `current_occupancy` TINYINT NOT NULL DEFAULT 0 COMMENT '当前入住人数',
   `facility_config` JSON DEFAULT NULL COMMENT '设施配置（如：{"display":"4K", "chair":"赛车椅"}）',
   `is_premium` TINYINT(1) DEFAULT 0 COMMENT '是否高级房型（需高等级会员预订）',
   PRIMARY KEY (`room_id`),
@@ -475,11 +477,11 @@ INSERT INTO `tb_system_config` (`config_key`, `config_value`, `description`) VAL
 ('temp_alert_threshold', '95', 'CPU/GPU温度报警阈值（°C）'),
 ('member_upgrade_bronze_to_silver', '1000', '青铜->白银所需经验值'),
 ('member_upgrade_silver_to_gold', '5000', '白银->黄金所需经验值');
-
--- 插入示例房间数据
-INSERT INTO `tb_room` (`room_no`, `room_type`, `floor`, `price_per_hour`, `is_premium`) VALUES
-('201', 'SINGLE', 2, 15.00, 0),
-('202', 'DOUBLE', 2, 25.00, 0),
+max_occupancy`, `is_premium`) VALUES
+('201', 'SINGLE', 2, 15.00, 1, 0),
+('202', 'DOUBLE', 2, 25.00, 2, 0),
+('301', 'VIP', 3, 50.00, 2, 1),
+('302', 'FIVE_PLAYER', 3, 80.00, 5
 ('301', 'VIP', 3, 50.00, 1),
 ('302', 'FIVE_PLAYER', 3, 80.00, 1);
 

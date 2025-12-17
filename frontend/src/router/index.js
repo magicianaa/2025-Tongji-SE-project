@@ -61,6 +61,16 @@ const routes = [
         }
       },
       {
+        path: 'checkin',
+        name: 'StaffCheckIn',
+        component: () => import('@/views/staff/CheckIn.vue'),
+        meta: { 
+          title: '入住登记',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
         path: 'rooms',
         name: 'StaffRoomManagement',
         component: () => import('@/views/staff/RoomManagement.vue'),

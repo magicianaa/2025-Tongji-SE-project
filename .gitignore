@@ -132,5 +132,19 @@ docker-compose.override.yml
 # Docker 数据卷（如果本地挂载）
 .docker/
 
-# 项目特定的忽略文件
-# （如果有其他需要忽略的文件，在下面添加）
+# ===== 项目特定的忽略文件 =====
+# 测试脚本产生的临时文件
+test_*.ps1
+*_test_output.txt
+
+# 开发过程中的临时 SQL 脚本
+*_temp.sql
+test_*.sql
+
+# 前端打包分析报告
+frontend/stats.html
+frontend/.eslintcache
+
+# 后端开发时的临时文件
+backend/src/main/resources/application-dev.yml
+backend/logs/

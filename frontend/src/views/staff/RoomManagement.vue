@@ -6,7 +6,7 @@
           <el-radio-button label="ALL">全部</el-radio-button>
           <el-radio-button label="VACANT">空闲</el-radio-button>
           <el-radio-button label="OCCUPIED">已入住</el-radio-button>
-          <el-radio-button label="DIRTY">待清洁</el-radio-button>
+          <el-radio-button label="CLEANING">待清洁</el-radio-button>
           <el-radio-button label="MAINTENANCE">维修中</el-radio-button>
         </el-radio-group>
         
@@ -53,7 +53,7 @@
               v-if="room.status === 'VACANT'"
               type="primary"
               size="small"
-              @click="handleCheckIn(room)"
+              @click="goToCheckIn(room)"
             >
               办理入住
             </el-button>
@@ -64,6 +64,33 @@
               @click="handleCheckOut(room)"
             >
               办理退房
+            </el-button>
+            <el-button
+              v-if="room.status === 'CLEANING'"
+              type="success"
+              size="small"
+              @click="handleMarkCleaned(room)"
+            >
+              <el-icon><Check /></el-icon>
+              打扫完毕
+            </el-button>
+            <el-button
+              v-if="room.status === 'MAINTENANCE'"
+              type="success"
+              size="small"
+              @click="handleMarkRepaired(room)"
+            >
+              <el-icon><Tools /></el-icon>
+              已维修
+            </el-button>
+            <el-button
+              v-if="room.status === 'VACANT' || room.status === 'CLEANING'"
+              type="info"
+              size="small"
+              @click="handleMarkMaintenance(room)"
+            >
+              <el-icon><Tools /></el-icon>
+              设为维修
             </el-button>
             <el-button
               size="small"
@@ -140,9 +167,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Grid, Money, User } from '@element-plus/icons-vue'
+import { Refresh, Grid, Money, User, Check, Tools } from '@element-plus/icons-vue'
 import { getRoomList, getRoomsByStatus, checkIn, checkOut, getCheckInRecords } from '@/api/room'
 import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const userStore = useUserStore()
 
@@ -176,7 +205,7 @@ const getRoomClass = (status) => {
   return {
     vacant: status === 'VACANT',
     occupied: status === 'OCCUPIED',
-    dirty: status === 'DIRTY',
+    cleaning: status === 'CLEANING',
     maintenance: status === 'MAINTENANCE'
   }
 }
@@ -186,7 +215,7 @@ const getStatusTagType = (status) => {
   const typeMap = {
     VACANT: 'success',
     OCCUPIED: 'danger',
-    DIRTY: 'warning',
+    CLEANING: 'warning',
     MAINTENANCE: 'info'
   }
   return typeMap[status] || ''
@@ -197,7 +226,7 @@ const getStatusText = (status) => {
   const textMap = {
     VACANT: '空闲',
     OCCUPIED: '已入住',
-    DIRTY: '待清洁',
+    CLEANING: '待清洁',
     MAINTENANCE: '维修中'
   }
   return textMap[status] || status
@@ -286,7 +315,7 @@ const handleCheckOut = async (room) => {
   try {
     // 获取入住记录
     const records = await getCheckInRecords()
-    const record = records.find(r => r.roomId === room.roomId && r.actualCheckout === null)
+    const record = records.find(r => r.roomId === room.roomId && !r.actualCheckout)
     
     if (!record) {
       ElMessage.warning('未找到该房间的入住记录')
@@ -333,6 +362,82 @@ const handleViewDetail = (room) => {
       dangerouslyUseHTMLString: true
     }
   )
+}
+
+// 跳转到入住登记页面
+const router = useRouter()
+const goToCheckIn = (room) => {
+  // 跳转到入住登记页面，携带房间信息
+  router.push({
+    path: '/staff/checkin',
+    query: {
+      roomId: room.roomId,
+      roomNo: room.roomNo
+    }
+  })
+}
+
+// 标记房间为打扫完毕
+const handleMarkCleaned = async (room) => {
+  try {
+    await ElMessageBox.confirm(`确认将房间 ${room.roomNo} 标记为打扫完毕？`, '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+    
+    await axios.post(`/api/rooms/${room.roomId}/mark-cleaned`)
+    ElMessage.success('已标记为打扫完毕')
+    loadRooms()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('标记失败：', error)
+      ElMessage.error('标记失败')
+    }
+  }
+}
+
+// 标记房间为维修完成
+const handleMarkRepaired = async (room) => {
+  try {
+    await ElMessageBox.confirm(`确认将房间 ${room.roomNo} 标记为维修完成？`, '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+    
+    await axios.post(`/api/rooms/${room.roomId}/mark-repaired`)
+    ElMessage.success('已标记为维修完成')
+    loadRooms()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('标记失败：', error)
+      ElMessage.error('标记失败')
+    }
+  }
+}
+
+// 设置房间为维修中
+const handleMarkMaintenance = async (room) => {
+  try {
+    const { value: reason } = await ElMessageBox.prompt('请输入维修原因', '设置为维修中', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      inputPattern: /.+/,
+      inputErrorMessage: '请输入维修原因'
+    })
+    
+    await axios.post(`/api/rooms/${room.roomId}/mark-maintenance`, null, {
+      params: { reason }
+    })
+    ElMessage.success('已设置为维修中')
+    loadRooms()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('设置失败：', error)
+      ElMessage.error('设置失败')
+    }
+  }
 }
 
 onMounted(() => {
@@ -387,7 +492,7 @@ onMounted(() => {
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
 }
 
-.room-card.dirty {
+.room-card.cleaning {
   border-color: #e6a23c;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
 }

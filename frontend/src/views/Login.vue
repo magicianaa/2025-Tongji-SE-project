@@ -108,23 +108,16 @@
               />
             </el-form-item>
             
-            <el-form-item label="姓名" prop="realName">
-              <el-input
-                v-model="registerForm.realName"
-                placeholder="请输入真实姓名"
-                prefix-icon="User"
-                clearable
-              />
-            </el-form-item>
-            
-            <el-form-item label="身份证号" prop="idCard">
-              <el-input
-                v-model="registerForm.idCard"
-                placeholder="请输入身份证号"
-                prefix-icon="Postcard"
-                clearable
-              />
-            </el-form-item>
+            <el-alert
+              title="注册说明"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 15px;"
+            >
+              注册成功后，您可以预订房间。<br />
+              实名信息（姓名、身份证）将在办理入住时完成绑定。
+            </el-alert>
             
             <el-form-item>
               <el-button
@@ -183,9 +176,7 @@ const registerForm = reactive({
   phone: '',
   smsCode: '',
   password: '',
-  confirmPassword: '',
-  realName: '',
-  idCard: ''
+  confirmPassword: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
@@ -212,13 +203,6 @@ const registerRules = {
   ],
   confirmPassword: [
     { required: true, validator: validateConfirmPassword, trigger: 'blur' }
-  ],
-  realName: [
-    { required: true, message: '请输入真实姓名', trigger: 'blur' }
-  ],
-  idCard: [
-    { required: true, message: '请输入身份证号', trigger: 'blur' },
-    { pattern: /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '身份证号格式不正确', trigger: 'blur' }
   ]
 }
 
