@@ -68,7 +68,7 @@
               <div class="room-info">
                 <div class="room-no">{{ room.roomNo }}</div>
                 <div class="room-type">{{ getRoomTypeName(room.roomType) }}</div>
-                <div class="room-price">¥{{ (room.pricePerHour * 24).toFixed(0) }}/晚</div>
+                <div class="room-price">¥{{ room.pricePerDay }}/天</div>
                 <div class="room-status" v-if="room.hasBooking">
                   <el-tag type="warning" size="small">已有预订</el-tag>
                 </div>

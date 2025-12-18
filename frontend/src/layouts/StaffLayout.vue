@@ -52,8 +52,12 @@
               <el-icon><Monitor /></el-icon>
               <span>硬件监控</span>
             </el-menu-item>
-            <el-menu-item index="/staff/orders">
+            <el-menu-item index="/staff/products">
               <el-icon><ShoppingCart /></el-icon>
+              <span>商品管理</span>
+            </el-menu-item>
+            <el-menu-item index="/staff/pos-orders">
+              <el-icon><List /></el-icon>
               <span>POS订单</span>
             </el-menu-item>
             <el-menu-item index="/staff/maintenance">

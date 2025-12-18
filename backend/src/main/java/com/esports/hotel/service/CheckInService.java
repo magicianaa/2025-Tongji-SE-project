@@ -299,7 +299,7 @@ public class CheckInService {
         response.setRoomId(room.getRoomId());
         response.setCheckInTime(now);
         response.setExpectedCheckout(expectedCheckout);
-        response.setPricePerHour(room.getPricePerHour());
+        response.setPricePerDay(room.getPricePerDay());
         response.setCurrentOccupancy(guestCount);
         response.setMaxOccupancy(room.getMaxOccupancy());
         response.setGuests(guestDetails);

@@ -75,13 +75,16 @@ public class RoomService {
         LocalDateTime checkInTime = record.getActualCheckin();
         LocalDateTime checkOutTime = LocalDateTime.now();
         long stayHours = Duration.between(checkInTime, checkOutTime).toHours();
-        if (stayHours < 1) {
-            stayHours = 1; // 最少按1小时计费
+        
+        // 按天计费：进1制，不满1天按1天计算
+        long stayDays = (stayHours + 23) / 24; // 向上取整
+        if (stayDays < 1) {
+            stayDays = 1;
         }
 
         Room room = roomMapper.selectById(record.getRoomId());
-        BigDecimal roomFee = room.getPricePerHour()
-                .multiply(BigDecimal.valueOf(stayHours))
+        BigDecimal roomFee = room.getPricePerDay()
+                .multiply(BigDecimal.valueOf(stayDays))
                 .setScale(2, RoundingMode.HALF_UP);
 
         // 3. 汇总 POS 挂账金额（TODO: 实际需查询 POS 订单表）
@@ -165,7 +168,7 @@ public class RoomService {
             vo.setRoomType(room.getRoomType());
             vo.setFloor(room.getFloor());
             vo.setStatus(room.getStatus());
-            vo.setPricePerHour(room.getPricePerHour());
+            vo.setPricePerDay(room.getPricePerDay());
             vo.setMaxOccupancy(room.getMaxOccupancy());
             vo.setCurrentOccupancy(room.getCurrentOccupancy());
             vo.setFacilityConfig(room.getFacilityConfig());

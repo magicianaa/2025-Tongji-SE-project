@@ -85,13 +85,26 @@ public class JwtUtil {
      */
     public Claims parseToken(String token) {
         try {
-            return Jwts.parser()
+            log.debug("开始解析Token: {}", token.substring(0, Math.min(20, token.length())) + "...");
+            log.debug("JWT Secret长度: {} bytes", jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8).length);
+            
+            Claims claims = Jwts.parser()
                     .verifyWith(getSecretKey())
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
+            
+            log.debug("Token解析成功: userId={}, expiration={}", 
+                    claims.get("userId"), claims.getExpiration());
+            return claims;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("Token已过期: {}", e.getMessage());
+            return null;
+        } catch (io.jsonwebtoken.SignatureException e) {
+            log.error("Token签名验证失败: {}", e.getMessage());
+            return null;
         } catch (Exception e) {
-            log.error("Token 解析失败: {}", e.getMessage());
+            log.error("Token解析失败: {} - {}", e.getClass().getName(), e.getMessage());
             return null;
         }
     }

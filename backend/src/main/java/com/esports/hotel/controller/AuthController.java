@@ -47,6 +47,12 @@ public class AuthController {
         return Result.success(response, "登录成功");
     }
 
+    @Operation(summary = "检查入住状态", description = "检查当前登录用户是否有有效入住记录")
+    @GetMapping("/check-in-status")
+    public Result<?> checkInStatus(@RequestHeader("Authorization") String authHeader) {
+        return authService.checkInStatus(authHeader);
+    }
+
     @Operation(summary = "测试接口", description = "测试服务是否正常运行")
     @GetMapping("/ping")
     public Result<String> ping() {

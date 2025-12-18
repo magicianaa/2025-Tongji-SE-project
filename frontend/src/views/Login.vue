@@ -230,6 +230,9 @@ const handleLogin = async () => {
           currentPoints: data.currentPoints
         })
         
+        // 自动检查入住状态
+        await userStore.refreshCheckInStatus()
+        
         ElMessage.success('登录成功')
         
         // 根据用户角色跳转到对应的首页

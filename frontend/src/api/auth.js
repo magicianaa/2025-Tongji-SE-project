@@ -45,3 +45,13 @@ export const getCurrentUser = () => {
     method: 'get'
   })
 }
+
+/**
+ * 检查入住状态
+ */
+export const checkInStatus = () => {
+  return request({
+    url: '/auth/check-in-status',
+    method: 'get'
+  })
+}

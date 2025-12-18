@@ -39,8 +39,9 @@ request.interceptors.response.use(
     if (res.code === 200) {
       return res.data
     } else {
-      // 业务错误
-      ElMessage.error(res.message || '请求失败')
+      // 业务错误 - 但不显示错误消息（由调用方决定）
+      console.warn('业务错误:', res.code, res.message)
+      // ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
     }
   },

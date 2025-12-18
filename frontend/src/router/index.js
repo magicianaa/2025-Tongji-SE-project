@@ -89,6 +89,26 @@ const routes = [
           requiresAuth: true,
           roles: ['STAFF']
         }
+      },
+      {
+        path: 'products',
+        name: 'StaffProductManagement',
+        component: () => import('@/views/staff/ProductManagement.vue'),
+        meta: { 
+          title: '商品管理',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
+        path: 'pos-orders',
+        name: 'StaffPosOrders',
+        component: () => import('@/views/staff/PosOrders.vue'),
+        meta: { 
+          title: 'POS订单',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
       }
     ]
   },
@@ -116,6 +136,26 @@ const routes = [
         component: () => import('@/views/guest/Booking.vue'),
         meta: { 
           title: '预订房间',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'mall',
+        name: 'GuestShoppingMall',
+        component: () => import('@/views/guest/ShoppingMall.vue'),
+        meta: { 
+          title: '商城点餐',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'billing',
+        name: 'GuestBilling',
+        component: () => import('@/views/guest/Billing.vue'),
+        meta: { 
+          title: '退房结算',
           requiresAuth: true,
           roles: ['GUEST']
         }
@@ -147,7 +187,7 @@ const router = createRouter({
 })
 
 // 全局前置守卫 - RBAC鉴权
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   
   // 设置页面标题
@@ -162,6 +202,11 @@ router.beforeEach((to, from, next) => {
         query: { redirect: to.fullPath }
       })
       return
+    }
+
+    // 已登录的住客用户，检查入住状态（仅在首次加载或从登录页跳转时）
+    if (userStore.userInfo?.userType === 'GUEST' && !from.name) {
+      await userStore.refreshCheckInStatus()
     }
 
     // 已登录，检查角色权限

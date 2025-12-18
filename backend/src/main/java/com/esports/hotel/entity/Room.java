@@ -37,9 +37,9 @@ public class Room implements Serializable {
     private String status;
 
     /**
-     * 每小时价格
+     * 每天价格
      */
-    private BigDecimal pricePerHour;
+    private BigDecimal pricePerDay;
 
     /**
      * 最大容纳人数

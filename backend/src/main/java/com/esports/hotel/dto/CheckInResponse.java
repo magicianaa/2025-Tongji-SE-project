@@ -31,7 +31,7 @@ public class CheckInResponse {
     private LocalDateTime expectedCheckout;
 
     @Schema(description = "房费（元/小时）")
-    private BigDecimal pricePerHour;
+    private BigDecimal pricePerDay;
 
     @Schema(description = "当前入住人数")
     private Integer currentOccupancy;

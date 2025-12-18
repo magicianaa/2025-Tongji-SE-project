@@ -1,0 +1,14 @@
+.git/
+.idea/
+*.iml
+.DS_Store
+*.log
+node_modules/
+target/
+dist/
+dump.rdb
+*.md
+!README.md
+!DOCKER.md
+.env.local
+.env.*.local

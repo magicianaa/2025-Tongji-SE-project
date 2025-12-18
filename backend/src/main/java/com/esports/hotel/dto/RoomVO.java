@@ -28,7 +28,7 @@ public class RoomVO {
     private String status;
 
     @Schema(description = "每小时价格")
-    private BigDecimal pricePerHour;
+    private BigDecimal pricePerDay;
 
     @Schema(description = "最大容纳人数")
     private Integer maxOccupancy;

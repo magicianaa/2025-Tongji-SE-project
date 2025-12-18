@@ -60,11 +60,14 @@ lerna-debug.log*
 # Redis 持久化文件
 dump.rdb
 appendonly.aof
+*.rdb
 
 # MySQL 备份文件
 *.sql.backup
 *.sql.gz
 database/backups/
+database/*_backup.sql
+database/*_test.sql
 
 # ===== 文档和草稿 =====
 # 保留最终版文档，忽略草稿和临时版本
@@ -73,6 +76,12 @@ database/backups/
 *temp*
 *.pdf~
 SRS草稿*.md
+
+# 开发过程中的临时报告和指南（可选保留）
+# *_FIX.md
+# *_REPORT.md
+# *_GUIDE.md
+# *_TEST_GUIDE.md
 
 # ===== 敏感信息和配置 =====
 # 环境变量和密钥
@@ -124,22 +133,31 @@ test-data/
 *-backup
 
 # ===== Docker 相关 =====
-# Docker 构建产物
-.dockerignore
+# Docker 构建产物和配置
 docker-compose.override.yml
-*.dockerfile
+docker-compose.*.yml
+!docker-compose.yml
 
 # Docker 数据卷（如果本地挂载）
 .docker/
+docker-data/
+
+# Docker 日志
+docker-logs/
 
 # ===== 项目特定的忽略文件 =====
-# 测试脚本产生的临时文件
+# 测试脚本和临时JSON文件
+test-*.ps1
 test_*.ps1
+test_*.json
+test-*.json
 *_test_output.txt
+test_output/
 
 # 开发过程中的临时 SQL 脚本
 *_temp.sql
 test_*.sql
+database/test_*.sql
 
 # 前端打包分析报告
 frontend/stats.html
@@ -148,3 +166,16 @@ frontend/.eslintcache
 # 后端开发时的临时文件
 backend/src/main/resources/application-dev.yml
 backend/logs/
+backend/src/main/resources/application-local.yml
+backend/src/test/resources/
+
+# API测试文件（可选保留）
+# *.http
+# *.rest
+
+# POS系统测试数据
+pos_test_*.json
+*_pos_order.json
+
+# 账单系统测试数据
+billing_test_*.json

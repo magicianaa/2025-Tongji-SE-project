@@ -66,6 +66,15 @@
               办理退房
             </el-button>
             <el-button
+              v-if="room.status === 'OCCUPIED'"
+              type="primary"
+              size="small"
+              @click="handleViewBill(room)"
+            >
+              <el-icon><Tickets /></el-icon>
+              账单明细
+            </el-button>
+            <el-button
               v-if="room.status === 'CLEANING'"
               type="success"
               size="small"
@@ -105,6 +114,128 @@
       <el-empty v-if="filteredRooms.length === 0" description="暂无房间数据" />
     </el-card>
     
+    <!-- 账单明细对话框 -->
+    <el-dialog
+      v-model="billDialogVisible"
+      title="账单明细"
+      width="800px"
+    >
+      <div v-if="billDetail">
+        <!-- 账单总览 -->
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="房间号">{{ billDetail.roomNo }}</el-descriptions-item>
+          <el-descriptions-item label="姓名">{{ billDetail.realName }}</el-descriptions-item>
+          <el-descriptions-item label="账单总额">
+            <span style="color: #409eff; font-size: 18px; font-weight: bold">
+              ¥{{ billDetail.totalAmount }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="已支付">
+            <span style="color: #67c23a; font-size: 16px; font-weight: bold">
+              ¥{{ billDetail.paidAmount }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="待支付">
+            <span style="color: #f56c6c; font-size: 16px; font-weight: bold">
+              ¥{{ billDetail.unpaidAmount }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="支付状态">
+            <el-tag :type="billDetail.unpaidAmount === 0 ? 'success' : 'danger'">
+              {{ billDetail.unpaidAmount === 0 ? '已结清' : '未结清' }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 房费明细 -->
+        <el-divider content-position="left">房费明细</el-divider>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="入住时间">{{ billDetail.actualCheckin }}</el-descriptions-item>
+          <el-descriptions-item label="房费单价">¥{{ billDetail.pricePerDay }}/天</el-descriptions-item>
+          <el-descriptions-item label="已入住天数">{{ billDetail.days }}天</el-descriptions-item>
+          <el-descriptions-item label="房费小计">
+            <span style="color: #409eff; font-weight: bold">¥{{ billDetail.roomFee }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- POS消费明细 -->
+        <el-divider content-position="left">POS消费明细</el-divider>
+        <el-table 
+          v-if="billDetail.posOrders && billDetail.posOrders.length > 0"
+          :data="billDetail.posOrders"
+          border
+          style="width: 100%"
+        >
+          <el-table-column prop="orderNo" label="订单号" width="180" />
+          <el-table-column prop="createTime" label="下单时间" width="180" />
+          <el-table-column prop="totalAmount" label="订单金额" width="120">
+            <template #default="{ row }">
+              <span style="color: #409eff">¥{{ row.totalAmount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'COMPLETED' ? 'success' : 'warning'">
+                {{ row.status === 'COMPLETED' ? '已完成' : row.status === 'PENDING' ? '待处理' : '已取消' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-else description="暂无POS消费记录" :image-size="100" />
+
+        <!-- POS总计 -->
+        <div style="text-align: right; margin-top: 15px; font-size: 16px">
+          <span>POS消费总计：</span>
+          <span style="color: #409eff; font-weight: bold">¥{{ billDetail.posTotal }}</span>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="billDialogVisible = false">关闭</el-button>
+        <el-button
+          v-if="billDetail && billDetail.unpaidAmount > 0"
+          type="primary"
+          @click="settlementDialogVisible = true"
+        >
+          账单清付
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 账单清付对话框 -->
+    <el-dialog
+      v-model="settlementDialogVisible"
+      title="账单清付"
+      width="400px"
+    >
+      <el-form :model="settlementForm" label-width="100px">
+        <el-form-item label="待支付金额">
+          <span style="color: #f56c6c; font-size: 20px; font-weight: bold">
+            ¥{{ billDetail?.unpaidAmount }}
+          </span>
+        </el-form-item>
+        <el-form-item label="支付方式" required>
+          <el-radio-group v-model="settlementForm.paymentMethod">
+            <el-radio label="CASH">现金</el-radio>
+            <el-radio label="WECHAT">微信支付</el-radio>
+            <el-radio label="ALIPAY">支付宝</el-radio>
+            <el-radio label="CARD">银行卡</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="settlementDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="settlementLoading"
+          @click="confirmSettlement"
+        >
+          确认支付
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 入住对话框 -->
     <el-dialog
       v-model="checkInDialogVisible"
@@ -167,8 +298,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Grid, Money, User, Check, Tools } from '@element-plus/icons-vue'
+import { Refresh, Grid, Money, User, Check, Tools, Tickets } from '@element-plus/icons-vue'
 import { getRoomList, getRoomsByStatus, checkIn, checkOut, getCheckInRecords } from '@/api/room'
+import { getBillDetailByRoomId, settleBill } from '@/api/billing'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -253,6 +385,15 @@ const checkInForm = reactive({
   specialRequests: ''
 })
 
+// 账单相关状态
+const billDialogVisible = ref(false)
+const billDetail = ref(null)
+const settlementDialogVisible = ref(false)
+const settlementLoading = ref(false)
+const settlementForm = reactive({
+  paymentMethod: 'CASH'
+})
+
 const checkInRules = {
   realName: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' }
@@ -310,6 +451,43 @@ const confirmCheckIn = async () => {
   })
 }
 
+// 查看账单
+const handleViewBill = async (room) => {
+  try {
+    billDetail.value = await getBillDetailByRoomId(room.roomId)
+    billDialogVisible.value = true
+  } catch (error) {
+    console.error('获取账单失败：', error)
+    ElMessage.error('获取账单信息失败')
+  }
+}
+
+// 确认结算
+const confirmSettlement = async () => {
+  if (!settlementForm.paymentMethod) {
+    ElMessage.warning('请选择支付方式')
+    return
+  }
+  
+  settlementLoading.value = true
+  try {
+    await settleBill(billDetail.value.recordId, settlementForm.paymentMethod)
+    ElMessage.success('结算成功')
+    settlementDialogVisible.value = false
+    billDialogVisible.value = false
+    
+    // 重新加载账单信息
+    if (billDetail.value) {
+      billDetail.value = await getBillDetailByRoomId(billDetail.value.roomId)
+    }
+  } catch (error) {
+    console.error('结算失败：', error)
+    ElMessage.error('结算失败')
+  } finally {
+    settlementLoading.value = false
+  }
+}
+
 // 处理退房
 const handleCheckOut = async (room) => {
   try {
@@ -319,6 +497,19 @@ const handleCheckOut = async (room) => {
     
     if (!record) {
       ElMessage.warning('未找到该房间的入住记录')
+      return
+    }
+    
+    // 检查账单是否结清
+    try {
+      const billDetail = await getBillDetailByRoomId(room.roomId)
+      if (billDetail.unpaidAmount > 0) {
+        ElMessage.error(`该房间费用未结清，待支付金额：¥${billDetail.unpaidAmount}`)
+        return
+      }
+    } catch (error) {
+      console.error('获取账单信息失败：', error)
+      ElMessage.error('无法获取账单信息，请稍后重试')
       return
     }
     

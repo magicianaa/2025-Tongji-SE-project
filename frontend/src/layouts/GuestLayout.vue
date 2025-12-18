@@ -17,7 +17,7 @@
             class="room-badge"
             type="success"
           >
-            <el-tag type="success">{{ currentRoomNo }}</el-tag>
+            <el-tag type="success">{{ roomDisplayText }}</el-tag>
           </el-badge>
           
           <el-dropdown @command="handleCommand">
@@ -58,7 +58,7 @@
             
             <!-- 入住后功能（需要二次鉴权） -->
             <el-divider v-if="userStore.roomAuthToken" border-style="dashed">房客服务</el-divider>
-            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/pos">
+            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/mall">
               <el-icon><ShoppingCart /></el-icon>
               <span>商城点餐</span>
             </el-menu-item>
@@ -74,7 +74,7 @@
               <el-icon><Tools /></el-icon>
               <span>设备报修</span>
             </el-menu-item>
-            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/checkout">
+            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/billing">
               <el-icon><Money /></el-icon>
               <span>退房结算</span>
             </el-menu-item>
@@ -109,7 +109,17 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const currentRoute = computed(() => route.path)
-const currentRoomNo = computed(() => userStore.currentRoomNo || '未绑定')
+
+// 显示房间信息
+const roomDisplayText = computed(() => {
+  if (userStore.checkInInfo && userStore.checkInInfo.roomNo) {
+    return `${userStore.checkInInfo.roomNo}房间`
+  }
+  if (userStore.checkInInfo && userStore.checkInInfo.roomId) {
+    return `${userStore.checkInInfo.roomId}号房`
+  }
+  return '房间已绑定'
+})
 
 const handleCommand = (command) => {
   if (command === 'logout') {

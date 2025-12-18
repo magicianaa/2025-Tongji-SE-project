@@ -34,6 +34,8 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final com.esports.hotel.mapper.CheckInRecordMapper checkInRecordMapper;
+    private final com.esports.hotel.mapper.RoomMapper roomMapper;
 
     /**
      * 用户注册
@@ -127,6 +129,110 @@ public class AuthService {
 
         log.info("用户登录成功: userId={}, userType={}", user.getUserId(), user.getUserType());
         return response;
+    }
+
+    /**
+     * 检查入住状态
+     */
+    public com.esports.hotel.common.Result<?> checkInStatus(String authHeader) {
+        log.info("========== 开始检查入住状态 ==========");
+        log.info("Authorization Header: {}", authHeader);
+        
+        // 1. 提取并验证 Token
+        String token = jwtUtil.extractToken(authHeader);
+        if (token == null) {
+            log.warn("检查入住状态：未提供Token");
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "未提供认证Token"
+            ));
+        }
+        
+        log.info("提取到Token: {}...", token.substring(0, Math.min(20, token.length())));
+        
+        if (!jwtUtil.validateToken(token)) {
+            log.warn("检查入住状态：Token验证失败");
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "Token无效或已过期"
+            ));
+        }
+        
+        log.info("Token验证通过");
+
+        // 2. 获取用户ID
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        if (userId == null) {
+            log.warn("检查入住状态：无法从Token中获取用户ID");
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "Token格式错误"
+            ));
+        }
+
+        // 3. 查询用户类型
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+
+        // 4. 如果不是住客，直接返回无权限
+        if (!"GUEST".equals(user.getUserType())) {
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "非住客用户无需客房权限"
+            ));
+        }
+
+        // 5. 查询对应的 guest_id
+        LambdaQueryWrapper<Guest> guestWrapper = new LambdaQueryWrapper<>();
+        guestWrapper.eq(Guest::getUserId, userId);
+        Guest guest = guestMapper.selectOne(guestWrapper);
+        
+        if (guest == null) {
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "未找到住客信息"
+            ));
+        }
+
+        // 6. 查询有效的入住记录
+        LocalDateTime now = LocalDateTime.now();
+        LambdaQueryWrapper<com.esports.hotel.entity.CheckInRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(com.esports.hotel.entity.CheckInRecord::getGuestId, guest.getGuestId())
+               .le(com.esports.hotel.entity.CheckInRecord::getActualCheckin, now)
+               .ge(com.esports.hotel.entity.CheckInRecord::getExpectedCheckout, now)
+               .eq(com.esports.hotel.entity.CheckInRecord::getIsGamingAuthActive, true)
+               .isNull(com.esports.hotel.entity.CheckInRecord::getActualCheckout)
+               .last("LIMIT 1");
+
+        com.esports.hotel.entity.CheckInRecord record = checkInRecordMapper.selectOne(wrapper);
+
+        if (record == null) {
+            log.info("用户 {} (guestId={}) 无有效入住记录", userId, guest.getGuestId());
+            return com.esports.hotel.common.Result.success(java.util.Map.of(
+                "hasCheckIn", false,
+                "message", "当前无有效入住记录"
+            ));
+        }
+
+        // 7. 查询房间信息
+        com.esports.hotel.entity.Room room = roomMapper.selectById(record.getRoomId());
+        String roomNo = room != null ? room.getRoomNo() : String.valueOf(record.getRoomId());
+        
+        // 8. 有有效入住记录，返回房间信息
+        log.info("用户 {} (guestId={}) 有效入住记录: roomId={}, roomNo={}, recordId={}", 
+                userId, guest.getGuestId(), record.getRoomId(), roomNo, record.getRecordId());
+        
+        return com.esports.hotel.common.Result.success(java.util.Map.of(
+            "hasCheckIn", true,
+            "recordId", record.getRecordId(),
+            "roomId", record.getRoomId(),
+            "roomNo", roomNo,
+            "guestId", guest.getGuestId(),
+            "expectedCheckout", record.getExpectedCheckout().toString(),
+            "message", "入住状态有效"
+        ));
     }
 
     /**
