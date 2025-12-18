@@ -3,17 +3,22 @@ package com.esports.hotel.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.esports.hotel.common.Result;
 import com.esports.hotel.dto.HardwareTelemetryDTO;
+import com.esports.hotel.dto.MaintenanceTicketVO;
 import com.esports.hotel.entity.AlertLog;
 import com.esports.hotel.entity.MaintenanceTicket;
+import com.esports.hotel.entity.Room;
 import com.esports.hotel.mapper.AlertLogMapper;
 import com.esports.hotel.mapper.MaintenanceTicketMapper;
+import com.esports.hotel.mapper.RoomMapper;
 import com.esports.hotel.service.HardwareSimulationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,6 +33,7 @@ public class HardwareController {
     private final HardwareSimulationService hardwareSimulationService;
     private final AlertLogMapper alertLogMapper;
     private final MaintenanceTicketMapper maintenanceTicketMapper;
+    private final RoomMapper roomMapper;
 
     @Operation(summary = "获取所有房间硬件状态", description = "用于监控大屏展示")
     @GetMapping("/status")
@@ -89,14 +95,48 @@ public class HardwareController {
 
     @Operation(summary = "获取所有维修工单", description = "工单管理页面")
     @GetMapping("/tickets")
-    public Result<List<MaintenanceTicket>> getAllTickets(
+    public Result<List<MaintenanceTicketVO>> getAllTickets(
             @Parameter(description = "状态筛选（可选）") @RequestParam(required = false) String status) {
         LambdaQueryWrapper<MaintenanceTicket> wrapper = new LambdaQueryWrapper<>();
         if (status != null) {
             wrapper.eq(MaintenanceTicket::getStatus, status);
         }
         wrapper.orderByDesc(MaintenanceTicket::getCreateTime);
-        return Result.success(maintenanceTicketMapper.selectList(wrapper));
+        List<MaintenanceTicket> tickets = maintenanceTicketMapper.selectList(wrapper);
+        
+        // 转换为 VO 并填充房间号
+        List<MaintenanceTicketVO> voList = new ArrayList<>();
+        for (MaintenanceTicket ticket : tickets) {
+            MaintenanceTicketVO vo = new MaintenanceTicketVO();
+            BeanUtils.copyProperties(ticket, vo);
+            
+            // 查询房间号
+            Room room = roomMapper.selectById(ticket.getRoomId());
+            if (room != null) {
+                vo.setRoomNo(room.getRoomNo());
+            }
+            voList.add(vo);
+        }
+        return Result.success(voList);
+    }
+
+    @Operation(summary = "创建维修工单", description = "住客报修或系统自动生成")
+    @PostMapping("/tickets")
+    public Result<MaintenanceTicket> createTicket(
+            @Parameter(description = "房间ID") @RequestParam Long roomId,
+            @Parameter(description = "报修人ID") @RequestParam(required = false) Long reporterId,
+            @Parameter(description = "诉求类型: REPAIR, CHANGE_ROOM") @RequestParam String requestType,
+            @Parameter(description = "故障描述") @RequestParam String description,
+            @Parameter(description = "优先级: LOW, MEDIUM, HIGH, URGENT") @RequestParam(required = false, defaultValue = "MEDIUM") String priority) {
+        MaintenanceTicket ticket = new MaintenanceTicket();
+        ticket.setRoomId(roomId);
+        ticket.setReporterId(reporterId);
+        ticket.setRequestType(requestType);
+        ticket.setDescription(description);
+        ticket.setPriority(priority);
+        ticket.setStatus("OPEN");
+        maintenanceTicketMapper.insert(ticket);
+        return Result.success(ticket, "工单创建成功");
     }
 
     @Operation(summary = "更新工单状态", description = "工单流转（指派、完成等）")
@@ -117,5 +157,25 @@ public class HardwareController {
             maintenanceTicketMapper.updateById(ticket);
         }
         return Result.success(null, "工单状态已更新");
+    }
+
+    @Operation(summary = "获取指定工单详情", description = "查看单个工单")
+    @GetMapping("/tickets/{ticketId}")
+    public Result<MaintenanceTicketVO> getTicketDetail(@PathVariable Long ticketId) {
+        MaintenanceTicket ticket = maintenanceTicketMapper.selectById(ticketId);
+        if (ticket == null) {
+            return Result.success(null);
+        }
+        
+        // 转换为 VO 并填充房间号
+        MaintenanceTicketVO vo = new MaintenanceTicketVO();
+        BeanUtils.copyProperties(ticket, vo);
+        
+        // 查询房间号
+        Room room = roomMapper.selectById(ticket.getRoomId());
+        if (room != null) {
+            vo.setRoomNo(room.getRoomNo());
+        }
+        return Result.success(vo);
     }
 }

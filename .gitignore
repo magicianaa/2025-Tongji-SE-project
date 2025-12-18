@@ -179,3 +179,14 @@ pos_test_*.json
 
 # 账单系统测试数据
 billing_test_*.json
+
+# 游戏化与积分系统测试数据（Phase 2）
+points_test_*.json
+task_test_*.json
+redemption_test_*.json
+*_points_transaction.json
+
+# 临时修复文档（开发完成后可删除）
+*_FIX.md
+*_REPORT.md
+BILLING_DISCOUNT_AND_POINTS_FIX.md

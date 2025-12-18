@@ -109,6 +109,36 @@ const routes = [
           requiresAuth: true,
           roles: ['STAFF']
         }
+      },
+      {
+        path: 'maintenance',
+        name: 'StaffMaintenanceTickets',
+        component: () => import('@/views/staff/MaintenanceTickets.vue'),
+        meta: { 
+          title: '维修工单',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
+        path: 'tasks',
+        name: 'StaffTaskManagement',
+        component: () => import('@/views/staff/TaskManagement.vue'),
+        meta: { 
+          title: '任务管理',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
+      },
+      {
+        path: 'points-shop-manage',
+        name: 'StaffPointsShopManagement',
+        component: () => import('@/views/staff/PointsShopManagement.vue'),
+        meta: { 
+          title: '积分商城管理',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
       }
     ]
   },
@@ -156,6 +186,36 @@ const routes = [
         component: () => import('@/views/guest/Billing.vue'),
         meta: { 
           title: '退房结算',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'repair',
+        name: 'GuestDeviceRepair',
+        component: () => import('@/views/guest/DeviceRepair.vue'),
+        meta: { 
+          title: '设备报修',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'tasks',
+        name: 'GuestTasksAndPoints',
+        component: () => import('@/views/guest/TasksAndPoints.vue'),
+        meta: { 
+          title: '任务积分',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'points-shop',
+        name: 'GuestPointsShop',
+        component: () => import('@/views/guest/PointsShop.vue'),
+        meta: { 
+          title: '积分商城',
           requiresAuth: true,
           roles: ['GUEST']
         }

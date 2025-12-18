@@ -52,7 +52,7 @@ export const handleAlert = (alertId) => {
 }
 
 /**
- * 获取维修工单
+ * 获取维修工单列表
  */
 export const getMaintenanceTickets = (params) => {
   return request({
@@ -63,11 +63,33 @@ export const getMaintenanceTickets = (params) => {
 }
 
 /**
- * 完成维修工单
+ * 创建维修工单（报修）
  */
-export const completeTicket = (ticketId) => {
+export const createTicket = (data) => {
   return request({
-    url: `/hardware/tickets/${ticketId}/complete`,
-    method: 'post'
+    url: '/hardware/tickets',
+    method: 'post',
+    params: data
+  })
+}
+
+/**
+ * 获取工单详情
+ */
+export const getTicketDetail = (ticketId) => {
+  return request({
+    url: `/hardware/tickets/${ticketId}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 更新工单状态
+ */
+export const updateTicketStatus = (ticketId, data) => {
+  return request({
+    url: `/hardware/tickets/${ticketId}/status`,
+    method: 'put',
+    params: data
   })
 }

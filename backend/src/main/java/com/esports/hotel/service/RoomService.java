@@ -41,6 +41,7 @@ public class RoomService {
     private final CheckInRecordMapper checkInRecordMapper;
     private final BookingMapper bookingMapper;
     private final JwtUtil jwtUtil;
+    private final PointsService pointsService;
 
     /**
      * 办理入住 - 此方法已废弃
@@ -90,13 +91,21 @@ public class RoomService {
         // 3. 汇总 POS 挂账金额（TODO: 实际需查询 POS 订单表）
         BigDecimal posCharges = BigDecimal.ZERO;
 
-        // 4. 计算最终金额
-        BigDecimal finalAmount = roomFee
+        // 4. 获取住客信息，应用会员折扣
+        Guest guest = guestMapper.selectById(record.getGuestId());
+        double discountRate = pointsService.getMemberDiscountRate(guest.getMemberLevel());
+        
+        // 5. 计算最终金额（应用会员折扣）
+        BigDecimal subtotal = roomFee
                 .add(posCharges)
-                .add(record.getDamageCompensation())
-                .subtract(BigDecimal.valueOf(record.getPointsDeduction() / 100.0));
+                .add(record.getDamageCompensation());
+        BigDecimal discountAmount = subtotal.multiply(BigDecimal.valueOf(1 - discountRate))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal finalAmount = subtotal.multiply(BigDecimal.valueOf(discountRate))
+                .subtract(BigDecimal.valueOf(record.getPointsDeduction() / 100.0))
+                .setScale(2, RoundingMode.HALF_UP);
 
-        // 5. 更新入住记录
+        // 6. 更新入住记录
         record.setActualCheckout(checkOutTime);
         record.setRoomFee(roomFee);
         record.setFinalAmount(finalAmount);
@@ -105,20 +114,28 @@ public class RoomService {
         record.setIsGamingAuthActive(false);  // 立即回收客房权限
         checkInRecordMapper.updateById(record);
 
-        // 6. 更新房态为"待清洁"，并重置入住人数
+        // 7. 更新房态为"待清洁"，并重置入住人数
         room.setStatus("CLEANING");
         room.setCurrentOccupancy(0);
         roomMapper.updateById(room);
 
-        // 7. 更新住客累计入住天数和积分
-        Guest guest = guestMapper.selectById(record.getGuestId());
-        guest.setTotalCheckinNights(guest.getTotalCheckinNights() + 1);
-        // 赠送积分：每消费1元赠送10积分
-        int earnedPoints = finalAmount.multiply(BigDecimal.valueOf(10)).intValue();
-        guest.setCurrentPoints(guest.getCurrentPoints() + earnedPoints);
+        // 8. 更新住客累计入住天数
+        guest.setTotalCheckinNights(guest.getTotalCheckinNights() + (int) stayDays);
         guestMapper.updateById(guest);
+        
+        // 9. 发放退房积分奖励（消费金额等值积分，自动升级会员等级）
+        int earnedPoints = finalAmount.intValue();
+        if (earnedPoints > 0) {
+            pointsService.addPoints(
+                record.getGuestId(),
+                earnedPoints,
+                "ADMIN_ADJUST",
+                recordId,
+                "退房结算奖励积分"
+            );
+        }
 
-        // 8. 构造账单响应
+        // 10. 构造账单响应
         CheckOutResponse response = new CheckOutResponse();
         response.setRecordId(recordId);
         response.setRoomNo(room.getRoomNo());
@@ -130,7 +147,7 @@ public class RoomService {
         response.setFinalAmount(finalAmount);
         response.setPaymentMethod(paymentMethod);
 
-        // 9. 生成账单明细
+        // 11. 生成账单明细
         List<CheckOutResponse.BillItem> billItems = new ArrayList<>();
         billItems.add(new CheckOutResponse.BillItem("房费", roomFee, "ROOM_FEE"));
         if (posCharges.compareTo(BigDecimal.ZERO) > 0) {
@@ -139,10 +156,14 @@ public class RoomService {
         if (record.getDamageCompensation().compareTo(BigDecimal.ZERO) > 0) {
             billItems.add(new CheckOutResponse.BillItem("赔偿金", record.getDamageCompensation(), "DAMAGE"));
         }
+        if (discountRate < 1.0) {
+            billItems.add(new CheckOutResponse.BillItem("会员折扣(" + guest.getMemberLevel() + ")", 
+                discountAmount.negate(), "DISCOUNT"));
+        }
         response.setBillItems(billItems);
 
-        log.info("办理退房成功: recordId={}, finalAmount={}, earnedPoints={}", 
-                 recordId, finalAmount, earnedPoints);
+        log.info("办理退房成功: recordId={}, finalAmount={}, earnedPoints={}, memberLevel={}, discount={}%", 
+                 recordId, finalAmount, earnedPoints, guest.getMemberLevel(), (int)((1 - discountRate) * 100));
 
         return response;
     }

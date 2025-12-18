@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.esports.hotel.common.BusinessException;
 import com.esports.hotel.dto.BillDetailDTO;
 import com.esports.hotel.entity.CheckInRecord;
+import com.esports.hotel.entity.Guest;
 import com.esports.hotel.entity.PosOrder;
 import com.esports.hotel.entity.Room;
 import com.esports.hotel.entity.User;
 import com.esports.hotel.mapper.CheckInRecordMapper;
+import com.esports.hotel.mapper.GuestMapper;
 import com.esports.hotel.mapper.PosOrderMapper;
 import com.esports.hotel.mapper.RoomMapper;
 import com.esports.hotel.mapper.UserMapper;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +37,8 @@ public class BillingService {
     private final RoomMapper roomMapper;
     private final PosOrderMapper posOrderMapper;
     private final UserMapper userMapper;
+    private final GuestMapper guestMapper;
+    private final PointsService pointsService;
     
     /**
      * 获取账单详情
@@ -109,12 +114,42 @@ public class BillingService {
                 .map(PosOrder::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        // 6. 计算总金额
-        BigDecimal totalAmount = roomFee.add(posTotal);
+        // 6. 计算会员折扣：查询该房间所有住客中最高的会员等级
+        String highestMemberLevel = "BRONZE";
+        int highestLevelRank = 0;
+        
+        for (CheckInRecord r : allRecords) {
+            Guest guest = guestMapper.selectOne(
+                new LambdaQueryWrapper<Guest>().eq(Guest::getUserId, r.getGuestId())
+            );
+            if (guest != null && guest.getMemberLevel() != null) {
+                int levelRank = getMemberLevelRank(guest.getMemberLevel());
+                if (levelRank > highestLevelRank) {
+                    highestLevelRank = levelRank;
+                    highestMemberLevel = guest.getMemberLevel();
+                }
+            }
+        }
+        
+        // 7. 根据会员等级计算折扣率
+        BigDecimal discountRate = getDiscountRate(highestMemberLevel);
+        
+        // 8. 计算总金额（折扣前）
+        BigDecimal totalAmountBeforeDiscount = roomFee.add(posTotal);
+        
+        // 9. 计算折扣后金额
+        BigDecimal totalAmount = totalAmountBeforeDiscount.multiply(discountRate)
+                .setScale(2, RoundingMode.HALF_UP);
+        
         BigDecimal paidAmount = record.getRoomFee() != null ? record.getRoomFee() : BigDecimal.ZERO;
         BigDecimal unpaidAmount = totalAmount.subtract(paidAmount);
         
-        // 7. 构建响应
+        // 防止待支付金额为负数（已支付金额大于折扣后金额时）
+        if (unpaidAmount.compareTo(BigDecimal.ZERO) < 0) {
+            unpaidAmount = BigDecimal.ZERO;
+        }
+        
+        // 10. 构建响应
         BillDetailDTO dto = new BillDetailDTO();
         dto.setRecordId(recordId);
         dto.setRoomNo(room.getRoomNo());
@@ -139,7 +174,7 @@ public class BillingService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void settleBill(Long recordId, String paymentMethod) {
-        // 1. 获取账单详情
+        // 1. 获取账单详情（已包含折扣）
         BillDetailDTO billDetail = getBillDetail(recordId);
         
         // 2. 查询该房间所有未退房的入住记录
@@ -150,17 +185,91 @@ public class BillingService {
                 .isNull(CheckInRecord::getActualCheckout)
         );
         
-        // 3. 更新该房间所有住客的费用信息
+        // 3. 计算每个住客应获得的积分和经验值（折扣前金额÷人数，向上取整）
+        Room room = roomMapper.selectById(record.getRoomId());
+        int occupancy = allRecords.size();
+        
+        // 计算折扣前总金额
+        LocalDateTime checkInTime = record.getActualCheckin();
+        LocalDateTime currentTime = LocalDateTime.now();
+        long stayHours = Duration.between(checkInTime, currentTime).toHours();
+        long stayDays = (stayHours + 23) / 24;
+        if (stayDays < 1) {
+            stayDays = 1;
+        }
+        BigDecimal roomFee = room.getPricePerDay().multiply(BigDecimal.valueOf(stayDays));
+        
+        List<Long> recordIds = allRecords.stream()
+                .map(CheckInRecord::getRecordId)
+                .collect(Collectors.toList());
+        List<PosOrder> posOrders = posOrderMapper.selectList(
+            new LambdaQueryWrapper<PosOrder>()
+                .in(PosOrder::getRecordId, recordIds)
+                .ne(PosOrder::getStatus, "CANCELLED")
+        );
+        BigDecimal posTotal = posOrders.stream()
+                .map(PosOrder::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        BigDecimal totalAmountBeforeDiscount = roomFee.add(posTotal);
+        
+        // 每个住客获得的积分和经验值（向上取整）
+        int pointsPerGuest = totalAmountBeforeDiscount
+                .divide(BigDecimal.valueOf(occupancy), 0, RoundingMode.UP)
+                .intValue();
+        
+        // 4. 更新该房间所有住客的费用信息，并增加积分和经验值
         for (CheckInRecord r : allRecords) {
             r.setRoomFee(billDetail.getTotalAmount());
             r.setFinalAmount(billDetail.getTotalAmount());
             r.setPaymentStatus("PAID");
             r.setPaymentMethod(paymentMethod);
             recordMapper.updateById(r);
+            
+            // 为每个住客增加积分和经验值
+            Guest guest = guestMapper.selectOne(
+                new LambdaQueryWrapper<Guest>().eq(Guest::getUserId, r.getGuestId())
+            );
+            if (guest != null) {
+                pointsService.addPoints(
+                    guest.getGuestId(), 
+                    pointsPerGuest, 
+                    "ADMIN_ADJUST", 
+                    null, 
+                    "账单清付奖励"
+                );
+                log.info("住客 {} 获得清付奖励: {} 积分/经验", guest.getGuestId(), pointsPerGuest);
+            }
         }
         
-        log.info("账单清付成功: roomId={}, recordCount={}, totalAmount={}, paymentMethod={}", 
-                record.getRoomId(), allRecords.size(), billDetail.getTotalAmount(), paymentMethod);
+        log.info("账单清付成功: roomId={}, recordCount={}, totalAmount={}, paymentMethod={}, pointsPerGuest={}", 
+                record.getRoomId(), allRecords.size(), billDetail.getTotalAmount(), paymentMethod, pointsPerGuest);
+    }
+    
+    /**
+     * 获取会员等级排名（数字越大等级越高）
+     */
+    private int getMemberLevelRank(String memberLevel) {
+        switch (memberLevel) {
+            case "PLATINUM": return 4;
+            case "GOLD": return 3;
+            case "SILVER": return 2;
+            case "BRONZE": return 1;
+            default: return 0;
+        }
+    }
+    
+    /**
+     * 根据会员等级获取折扣率
+     */
+    private BigDecimal getDiscountRate(String memberLevel) {
+        switch (memberLevel) {
+            case "PLATINUM": return new BigDecimal("0.85"); // 8.5折
+            case "GOLD": return new BigDecimal("0.90");     // 9折
+            case "SILVER": return new BigDecimal("0.95");   // 9.5折
+            case "BRONZE": 
+            default: return BigDecimal.ONE;                  // 不折扣
+        }
     }
     
     /**

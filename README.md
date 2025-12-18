@@ -22,8 +22,9 @@
 **项目类型：** B/S架构全栈Web应用  
 **适用场景：** 20-50间客房规模的小型电竞酒店  
 **核心创新：** 取代"酒店管理系统 + 网吧管理系统"双系统模式，实现住宿管理与电竞特色服务深度融合  
-**开发阶段：** Phase 1 已完成（POS销售点子系统）  
-**最后更新：** 2025-12-18
+**开发阶段：** ✅ Phase 2 已完成（游戏化与积分子系统）  
+**最后更新：** 2025-12-18  
+**下一阶段：** Phase 3 - 社交匹配子系统
 
 ---
 
@@ -142,7 +143,10 @@ java_project2/
 │   │   │   ├── PosProductController.java  # 商品管理
 │   │   │   ├── PosOrderController.java    # POS订单管理
 │   │   │   ├── BillingController.java     # 账单结算
-│   │   │   └── HardwareController.java    # 硬件监控
+│   │   │   ├── HardwareController.java    # 硬件监控
+│   │   │   ├── TaskController.java        # ✨ 任务管理（Phase 2）
+│   │   │   ├── PointsController.java      # ✨ 积分管理（Phase 2）
+│   │   │   └── PointsShopController.java  # ✨ 积分商城（Phase 2）
 │   │   ├── dto/                            # 数据传输对象
 │   │   │   ├── LoginDTO.java
 │   │   │   ├── CheckInDTO.java
@@ -150,7 +154,7 @@ java_project2/
 │   │   │   └── PosOrderDTO.java           # POS订单DTO
 │   │   ├── entity/                         # 实体类（23个表对应）
 │   │   │   ├── User.java                  # 用户基础表
-│   │   │   ├── Guest.java                 # 住客扩展表
+│   │   │   ├── Guest.java                 # 住客扩展表（✨ 含会员等级、积分）
 │   │   │   ├── Staff.java                 # 员工扩展表
 │   │   │   ├── Room.java                  # 房间信息表
 │   │   │   ├── Booking.java               # 预订记录表
@@ -159,6 +163,11 @@ java_project2/
 │   │   │   ├── PosOrder.java              # POS订单表
 │   │   │   ├── OrderItem.java             # 订单明细表
 │   │   │   ├── HardwareStatus.java        # 硬件状态表
+│   │   │   ├── Task.java                  # ✨ 任务模板表（Phase 2）
+│   │   │   ├── TaskRecord.java            # ✨ 任务完成记录表（Phase 2）
+│   │   │   ├── PointTransaction.java      # ✨ 积分流水表（Phase 2）
+│   │   │   ├── PointsProduct.java         # ✨ 积分商城商品表（Phase 2）
+│   │   │   ├── PointsRedemption.java      # ✨ 积分兑换记录表（Phase 2）
 │   │   │   └── ...                        # 其他实体
 │   │   ├── interceptor/
 │   │   │   ├── RoomAuthInterceptor.java   # 🔑 二次鉴权拦截器
@@ -169,8 +178,11 @@ java_project2/
 │   │   │   ├── AuthService.java
 │   │   │   ├── RoomService.java
 │   │   │   ├── PosService.java            # POS业务逻辑
-│   │   │   ├── BillingService.java        # 账单聚合逻辑
-│   │   │   └── HardwareSimulationService.java
+│   │   │   ├── BillingService.java        # ✨ 账单聚合逻辑（含会员折扣）
+│   │   │   ├── HardwareSimulationService.java
+│   │   │   ├── TaskService.java           # ✨ 任务业务逻辑（Phase 2）
+│   │   │   ├── PointsService.java         # ✨ 积分业务逻辑（Phase 2）
+│   │   │   └── PointsShopService.java     # ✨ 积分商城逻辑（Phase 2）
 │   │   └── util/
 │   │       └── JwtUtil.java               # JWT工具类
 │   ├── src/main/resources/
@@ -189,7 +201,10 @@ java_project2/
 │   │   │   ├── room.js
 │   │   │   ├── hardware.js
 │   │   │   ├── pos.js                     # POS商品/订单API
-│   │   │   └── billing.js                 # 账单结算API
+│   │   │   ├── billing.js                 # 账单结算API
+│   │   │   ├── task.js                    # ✨ 任务API（Phase 2）
+│   │   │   ├── points.js                  # ✨ 积分API（Phase 2）
+│   │   │   └── pointsShop.js              # ✨ 积分商城API（Phase 2）
 │   │   ├── components/                    # 公共组件
 │   │   ├── layouts/                       # 布局组件
 │   │   │   ├── AdminLayout.vue            # 管理端布局
@@ -212,12 +227,16 @@ java_project2/
 │   │   │   │   ├── RoomManagement.vue     # 房态管理（含账单）
 │   │   │   │   ├── CheckIn.vue            # 办理入住
 │   │   │   │   ├── Workbench.vue          # 工作台
-│   │   │   │   └── HardwareMonitor.vue    # 硬件监控
+│   │   │   │   ├── HardwareMonitor.vue    # 硬件监控
+│   │   │   │   ├── TaskManagement.vue     # ✨ 任务管理（Phase 2）
+│   │   │   │   └── PointsShopManagement.vue # ✨ 积分商城管理（Phase 2）
 │   │   │   └── guest/
 │   │   │       ├── Home.vue               # 住客首页
 │   │   │       ├── Booking.vue            # 房间预订
-│   │   │       ├── PosOrder.vue           # POS点单
-│   │   │       └── Billing.vue            # 账单结算
+│   │   │       ├── PosOrders.vue          # POS点单
+│   │   │       ├── Billing.vue            # 账单结算
+│   │   │       ├── TasksAndPoints.vue     # ✨ 任务积分（Phase 2）
+│   │   │       └── PointsShop.vue         # ✨ 积分商城（Phase 2）
 │   │   ├── App.vue
 │   │   └── main.js
 │   ├── Dockerfile
@@ -228,6 +247,7 @@ java_project2/
 ├── DOCKER.md                               # Docker部署文档
 ├── POS_SYSTEM_GUIDE.md                     # POS系统使用指南
 ├── RBAC_TEST_GUIDE.md                      # 权限测试指南
+├── BILLING_DISCOUNT_AND_POINTS_FIX.md      # ✨ 账单折扣与积分奖励修复文档（Phase 2）
 ├── SRS.txt                                 # 需求规格说明书
 └── README.md                               # 项目总览
 ```
@@ -313,18 +333,65 @@ java_project2/
 - [x] 报警系统
   - [x] 过热报警（CPU>85°C或GPU>90°C）
   - [x] 网络故障报警（延迟>100ms）
-  - [x] 自动生成维修工单
   - [x] WebSocket实时推送报警
 - [x] 维修工单管理
-  - [x] 工单自动生成
-  - [x] 工单状态管理
+  - [x] 住客端设备报修界面
+  - [x] 前台端工单管理界面
+  - [x] 工单创建API（用户报修）
+  - [x] 工单自动生成（系统报警触发）
+  - [x] 工单状态管理（待处理/处理中/已解决/已关闭）
+  - [x] 优先级管理（低/中/高/紧急）
   - [x] 房态联动更新
 
-### Module 6: 前端系统（三端统一）
+### Module 6: 游戏化与积分子系统 (P1) ✨ **Phase 2 完成** 🎉
+- [x] **任务系统**
+  - [x] 任务模板管理（发布、编辑、删除）
+  - [x] 任务类型支持（自动检测AUTO、人工审核MANUAL_AUDIT）
+  - [x] 任务提交系统（住客端截图上传+描述）
+  - [x] 人工审核流程（员工审核凭证、通过/拒绝）
+  - [x] 积分自动发放（审核通过后触发）
+  - [x] 可重复任务标记
+- [x] **积分商城**
+  - [x] 积分商品管理（增删改查、上下架）
+  - [x] 实物商品兑换（阿狸手办400分、盖亚皮肤钥匙扣200分等）
+  - [x] 服务权益兑换（延迟退房1小时500分、房费抵扣券1000分）
+  - [x] 兑换订单管理（待配送/已配送/已取消）
+  - [x] 积分余额检查与扣减
+  - [x] 库存自动扣减
+  - [x] 兑换记录查询
+- [x] **会员等级体系**
+  - [x] 四级会员制度（青铜BRONZE/白银SILVER/黄金GOLD/铂金PLATINUM）
+  - [x] 经验值累积系统（完成任务+账单清付奖励）
+  - [x] 自动升级机制（1000/5000/10000经验值门槛）
+  - [x] **会员折扣体系**（白银95折/黄金90折/铂金85折）
+  - [x] **账单清付奖励积分**（消费金额÷人数，向上取整）
+  - [x] **折扣自动应用**（选择最高会员等级折扣）
+- [x] **积分流水管理**
+  - [x] 积分变动记录（任务奖励/商品兑换/账单清付/管理员调整）
+  - [x] 余额快照机制
+  - [x] 流水查询API
+  - [x] 积分余额查询
+- [x] **前端界面完善**
+  - [x] 住客端任务积分界面（可用任务+提交凭证+任务记录+积分流水）
+  - [x] 住客端积分商城界面（商品浏览+兑换+兑换记录）
+  - [x] 前台端任务管理界面（发布任务+审核任务）
+  - [x] 前台端积分商城管理界面（商品管理+兑换订单管理）
+  - [x] 积分商城菜单项（StaffLayout和GuestLayout）
+- [x] **账单折扣集成** ⭐ 关键功能
+  - [x] 账单查询时自动应用会员折扣
+  - [x] 多人房间选择最高会员等级折扣
+  - [x] 账单清付后所有住客获得积分和经验值
+  - [x] 防止待支付金额为负数保护
+  - [x] 退房时使用ADMIN_ADJUST类型记录积分
+
+### Module 7: 前端系统（三端统一）
 - [x] **住客端 (Guest)**
   - [x] 房间预订界面（日期选择 + 可预订房间列表）
   - [x] POS点单界面（商品浏览 + 购物车 + 下单）
   - [x] 账单结算界面（账单明细 + 支付功能）
+  - [x] 设备报修界面（报修表单 + 我的报修记录 + 工单详情）
+  - [x] 任务积分界面（任务列表 + 提交任务 + 积分流水）✨ **Phase 2新增**
+  - [x] 积分商城界面（商品浏览 + 兑换 + 兑换记录）✨ **Phase 2新增**
 - [x] **前台端 (Staff)**
   - [x] 房态管理看板（房间卡片 + 状态筛选）
   - [x] 办理入住功能（身份信息录入 + 房间分配）
@@ -332,6 +399,7 @@ java_project2/
   - [x] 房间账单管理（查看待支付金额 + 代客结算）
   - [x] 工作台界面
   - [x] 硬件监控大屏（实时数据 + 告警弹窗）
+  - [x] 维修工单管理界面（工单列表 + 状态更新 + 工单详情）
 - [x] **管理端 (Admin)**
   - [x] 管理员Dashboard
   - [x] 商品管理界面（增删改查 + 库存管理）
@@ -351,22 +419,16 @@ java_project2/
 
 ---
 
-## 🔄 待开发功能（Phase 2+）
+## 🔄 待开发功能（Phase 3+）
 
 根据SRS.txt需求规格说明书，以下功能计划在后续阶段实现：
 
-### Phase 2: 社交匹配子系统 (P1)
+### Phase 3: 社交匹配子系统 (P1) 📅 计划中
+### Phase 3: 社交匹配子系统 (P1) 📅 计划中
 - [ ] 游戏档案管理（游戏类型、段位、擅长位置）
 - [ ] 组队招募系统（发布招募信息、筛选队友）
 - [ ] 临时战队管理（组队、解散、游戏时长记录）
 - [ ] 匹配推荐算法（基于段位和位置的智能推荐）
-
-### Phase 3: 游戏化与积分子系统 (P1)
-- [ ] 任务系统（自动检测任务、人工审核任务）
-- [ ] 积分商城（实物商品、服务权益兑换）
-- [ ] 会员等级体系（青铜/白银/黄金/铂金）
-- [ ] 积分流水管理（获得/消耗记录）
-- [ ] 经验值系统（自动升级机制）
 
 ### Phase 4: 评价管理子系统 (P1)
 - [ ] 退房后评价功能（1-5星评分 + 文字评价）
@@ -1607,8 +1669,13 @@ SOFTWARE.
 
 ### 开发进度
 - ✅ **Phase 1**：POS销售点子系统（100%）
-- 🔄 **Phase 2**：社交匹配子系统（规划中）
-- ⏳ **Phase 3**：游戏化与积分系统（待启动）
+- ✅ **Phase 2**：游戏化与积分子系统（100%）🎉
+  - ✅ 任务系统（发布、提交、审核、奖励）
+  - ✅ 积分商城（商品管理、兑换、订单）
+  - ✅ 会员等级体系（四级会员、自动升级）
+  - ✅ 账单折扣集成（会员折扣、积分奖励）
+  - ✅ 积分流水管理（变动记录、余额查询）
+- 📅 **Phase 3**：社交匹配子系统（规划中）
 - ⏳ **Phase 4**：评价管理系统（待启动）
 - ⏳ **Phase 5**：报表与决策支持（待启动）
 - ⏳ **Phase 6**：系统优化与扩展（待启动）
@@ -1620,8 +1687,8 @@ SOFTWARE.
 **如果这个项目对你有帮助，欢迎 ⭐ Star 支持！**
 
 **最后更新：** 2025-12-18  
-**当前版本：** v1.0.0-Phase1  
-**开发状态：** 🚀 Phase 1已完成，Phase 2规划中
+**当前版本：** v1.1.0-Phase2  
+**开发状态：** 🎉 Phase 2已完成！游戏化与积分系统全面上线
 
 Made with ❤️ by [项目作者]
 

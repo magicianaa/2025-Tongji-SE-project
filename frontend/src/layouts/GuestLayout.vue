@@ -70,6 +70,10 @@
               <el-icon><Trophy /></el-icon>
               <span>任务积分</span>
             </el-menu-item>
+            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/points-shop">
+              <el-icon><ShoppingBag /></el-icon>
+              <span>积分商城</span>
+            </el-menu-item>
             <el-menu-item v-if="userStore.roomAuthToken" index="/guest/repair">
               <el-icon><Tools /></el-icon>
               <span>设备报修</span>
@@ -101,7 +105,7 @@ import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { 
   Cpu, User, HomeFilled, Calendar, ShoppingCart, 
-  ChatDotRound, Trophy, Tools, Money, ArrowDown 
+  ChatDotRound, Trophy, Tools, Money, ArrowDown, ShoppingBag 
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
