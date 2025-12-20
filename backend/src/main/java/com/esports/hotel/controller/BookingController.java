@@ -55,7 +55,7 @@ public class BookingController {
         return Result.success(null, "预订已取消");
     }
 
-    @Operation(summary = "根据手机号查询今日预订", description = "前台员工根据预订者手机号查询今日预订信息")
+    @Operation(summary = "根据手机号查询最近预订", description = "前台员工根据预订者手机号查询最近7天内的有效预订信息")
     @GetMapping("/by-phone/{phone}")
     public Result<BookingResponse> getBookingByPhone(@PathVariable String phone) {
         BookingResponse booking = bookingService.getBookingByPhone(phone);

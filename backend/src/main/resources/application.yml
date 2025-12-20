@@ -94,8 +94,8 @@ hardware:
     # 网络延迟范围（ms）
     latency-min: 10
     latency-max: 100
-    # 故障模拟概率（0-1）
-    failure-rate: 0.05
+    # 故障模拟概率（0-1），先降低一些，原本为0.05
+    failure-rate: 0.005
 
 # 业务配置
 business:

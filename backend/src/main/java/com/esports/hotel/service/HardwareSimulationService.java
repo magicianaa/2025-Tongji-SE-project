@@ -118,11 +118,11 @@ public class HardwareSimulationService {
         telemetry.setRoomNo(room.getRoomNo());
         telemetry.setTimestamp(LocalDateTime.now());
 
-        // 1. 生成 CPU 温度（正态分布，均值70°C，标准差10）
-        float cpuTemp = generateNormalDistribution(70.0f, 10.0f, config.getTempMin(), config.getTempMax());
+        // 1. 生成 CPU 温度（正态分布，均值70(现在是50)°C，标准差10）
+        float cpuTemp = generateNormalDistribution(50.0f, 10.0f, config.getTempMin(), config.getTempMax());
         
-        // 2. 生成 GPU 温度（正态分布，均值75°C，标准差12）
-        float gpuTemp = generateNormalDistribution(75.0f, 12.0f, config.getTempMin(), config.getTempMax());
+        // 2. 生成 GPU 温度（正态分布，均值75(现在是55)°C，标准差12）
+        float gpuTemp = generateNormalDistribution(55.0f, 12.0f, config.getTempMin(), config.getTempMax());
         
         // 3. 模拟故障：按配置的概率生成过热数据
         if (random.nextFloat() < config.getFailureRate()) {

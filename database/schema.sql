@@ -84,6 +84,8 @@ CREATE TABLE `tb_booking` (
   `status` ENUM('PENDING', 'CONFIRMED', 'CHECKED_IN', 'CANCELLED') DEFAULT 'PENDING',
   `deposit_amount` DECIMAL(10, 2) DEFAULT 0.00 COMMENT '预付押金',
   `discount_rate` DECIMAL(3, 2) DEFAULT 1.00 COMMENT '折扣率（会员享受）',
+  `main_guest_name` VARCHAR(50) DEFAULT NULL COMMENT '主住客姓名',
+  `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
   `special_requests` TEXT DEFAULT NULL COMMENT '特殊要求',
   PRIMARY KEY (`booking_id`),
   KEY `idx_guest_id` (`guest_id`),

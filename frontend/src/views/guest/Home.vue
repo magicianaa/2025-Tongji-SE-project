@@ -112,7 +112,7 @@ const handleSocial = () => {
     ElMessage.warning('请先入住并绑定房间')
     return
   }
-  router.push('/guest/social')
+  router.push('/guest/online-lobby')
 }
 </script>
 

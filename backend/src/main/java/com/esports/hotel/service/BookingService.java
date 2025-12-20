@@ -239,21 +239,21 @@ public class BookingService {
             throw new BusinessException("该用户不是住客");
         }
 
-        // 3. 查询今日的CONFIRMED状态预订
+        // 3. 查询最近的CONFIRMED状态预订（今天或未来7天内）
         LocalDateTime todayStart = LocalDateTime.now().toLocalDate().atStartOfDay();
-        LocalDateTime todayEnd = todayStart.plusDays(1);
+        LocalDateTime futureEnd = todayStart.plusDays(7); // 查询未来7天内的预订
         
         LambdaQueryWrapper<Booking> bookingWrapper = new LambdaQueryWrapper<>();
         bookingWrapper.eq(Booking::getGuestId, guest.getGuestId())
                 .eq(Booking::getStatus, "CONFIRMED")
                 .ge(Booking::getPlannedCheckin, todayStart)
-                .lt(Booking::getPlannedCheckin, todayEnd)
-                .orderByDesc(Booking::getBookingTime)
+                .lt(Booking::getPlannedCheckin, futureEnd)
+                .orderByAsc(Booking::getPlannedCheckin) // 按入住时间升序，优先最近的
                 .last("LIMIT 1");
         
         Booking booking = bookingMapper.selectOne(bookingWrapper);
         if (booking == null) {
-            throw new BusinessException("未找到该手机号今日的预订记录");
+            throw new BusinessException("未找到该手机号最近7天内的有效预订记录");
         }
 
         // 4. 构造响应

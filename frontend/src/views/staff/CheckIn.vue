@@ -229,6 +229,7 @@
                   <el-col :span="12">
                     <p><strong>房间号：</strong>{{ bookingInfo.roomNo }}</p>
                     <p><strong>房间类型：</strong>{{ getRoomTypeLabel(bookingInfo.roomType) }}</p>
+                    <p><strong>预订主住客：</strong><span style="color: #f56c6c; font-weight: bold;">{{ bookingInfo.mainGuestName }}</span></p>
                   </el-col>
                   <el-col :span="12">
                     <p><strong>计划入住：</strong>{{ formatDateTime(bookingInfo.plannedCheckin) }}</p>
@@ -236,6 +237,14 @@
                   </el-col>
                 </el-row>
                 <p v-if="bookingInfo.specialRequests"><strong>特殊要求：</strong>{{ bookingInfo.specialRequests }}</p>
+                <el-divider />
+                <el-alert type="warning" :closable="false" show-icon style="margin-top: 10px;">
+                  <template #title>
+                    <strong>⚠️ 重要提示</strong>
+                  </template>
+                  <p style="margin: 5px 0;">入住时填写的<strong>住客姓名</strong>必须与预订时的<strong>主住客姓名（{{ bookingInfo.mainGuestName }}）</strong>完全一致，否则无法办理入住！</p>
+                  <p style="margin: 5px 0;">请确认<strong>预订手机号</strong>与入住住客之一的<strong>手机号</strong>匹配。</p>
+                </el-alert>
               </div>
             </el-alert>
 
@@ -620,14 +629,21 @@ const handleSubmit = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
 
-    checkInResult.value = response.data.data
-    successDialogVisible.value = true
-    ElMessage.success('入住登记成功')
-    
-    // 刷新房间列表
-    await fetchAvailableRooms()
+    // 检查后端返回的状态码
+    if (response.data.code === 200) {
+      checkInResult.value = response.data.data
+      successDialogVisible.value = true
+      ElMessage.success('入住登记成功！房间状态已更新')
+      
+      // 刷新房间列表
+      await fetchAvailableRooms()
+    } else {
+      // 后端返回非200状态码（业务异常）
+      ElMessage.error(response.data.message || '入住登记失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
+      // 网络异常或其他错误
       ElMessage.error(error.response?.data?.message || '入住登记失败')
     }
   } finally {
@@ -788,14 +804,21 @@ const handleBookingSubmit = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
 
-    checkInResult.value = response.data.data
-    successDialogVisible.value = true
-    ElMessage.success('入住登记成功')
-    
-    // 刷新房间列表
-    await fetchAvailableRooms()
+    // 检查后端返回的状态码
+    if (response.data.code === 200) {
+      checkInResult.value = response.data.data
+      successDialogVisible.value = true
+      ElMessage.success('入住登记成功！房间状态已更新')
+      
+      // 刷新房间列表
+      await fetchAvailableRooms()
+    } else {
+      // 后端返回非200状态码（业务异常）
+      ElMessage.error(response.data.message || '入住登记失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
+      // 网络异常或其他错误
       ElMessage.error(error.response?.data?.message || '入住登记失败')
     }
   } finally {

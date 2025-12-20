@@ -101,6 +101,12 @@ application-prod.properties
 # 后端 Maven
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
+**/target/
+*.class
+
+# Maven 本地仓库缓存
+.m2/
+.repository/
 
 # 前端 Node.js
 frontend/node_modules/
@@ -109,6 +115,10 @@ frontend/dist-ssr/
 frontend/.vite/
 frontend/.cache/
 frontend/coverage/
+**/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # ===== 测试相关 =====
 # 测试覆盖率报告
@@ -141,9 +151,13 @@ docker-compose.*.yml
 # Docker 数据卷（如果本地挂载）
 .docker/
 docker-data/
+volumes/
 
 # Docker 日志
 docker-logs/
+
+# Docker 临时文件
+.dockerignore.temp
 
 # ===== 项目特定的忽略文件 =====
 # 测试脚本和临时JSON文件
@@ -169,6 +183,14 @@ backend/logs/
 backend/src/main/resources/application-local.yml
 backend/src/test/resources/
 
+# 编译后的class文件
+backend/target/classes/
+backend/target/generated-sources/
+backend/target/generated-test-sources/
+backend/target/test-classes/
+backend/target/*.jar
+backend/target/*.war
+
 # API测试文件（可选保留）
 # *.http
 # *.rest
@@ -190,3 +212,47 @@ redemption_test_*.json
 *_FIX.md
 *_REPORT.md
 BILLING_DISCOUNT_AND_POINTS_FIX.md
+
+# ===== WebSocket 和实时通信 =====
+# WebSocket 测试文件
+websocket_test_*.json
+*_websocket_log.txt
+
+# ===== 性能和监控 =====
+# 性能分析文件
+*.hprof
+*.dump
+hs_err_pid*.log
+
+# JMX 监控数据
+jmx_*.log
+
+# ===== 安全和认证 =====
+# JWT 密钥（仅限开发环境）
+jwt-*.key
+auth-secret.txt
+
+# ===== 系统特定 =====
+# Windows
+desktop.ini
+*.lnk
+
+# Linux
+*~
+.directory
+
+# Mac
+.AppleDouble
+.LSOverride
+
+# ===== 其他构建工具 =====
+# Gradle（如果使用）
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# ===== 项目文档草稿 =====
+# 开发笔记和临时文档
+TODO.txt
+NOTES.md
+.notes/

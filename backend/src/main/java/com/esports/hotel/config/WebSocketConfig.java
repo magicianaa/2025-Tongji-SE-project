@@ -1,6 +1,8 @@
 package com.esports.hotel.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -13,7 +15,11 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  */
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketHandshakeInterceptor handshakeInterceptor;
+    private final WebSocketChannelInterceptor channelInterceptor;
 
     /**
      * 配置消息代理
@@ -39,7 +45,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // 允许跨域（生产环境需配置具体域名）
+                .setAllowedOriginPatterns("*") // 允许所有跨域请求
+                .addInterceptors(handshakeInterceptor) // 添加握手拦截器
                 .withSockJS();                 // 启用 SockJS 降级支持
+    }
+
+    /**
+     * 配置客户端入站通道拦截器
+     */
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(channelInterceptor);
     }
 }

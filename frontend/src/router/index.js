@@ -219,6 +219,46 @@ const routes = [
           requiresAuth: true,
           roles: ['GUEST']
         }
+      },
+      {
+        path: 'gaming-profile',
+        name: 'GuestGamingProfile',
+        component: () => import('@/views/guest/GamingProfile.vue'),
+        meta: { 
+          title: '游戏档案',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'online-lobby',
+        name: 'GuestOnlineLobby',
+        component: () => import('@/views/guest/OnlineLobby.vue'),
+        meta: { 
+          title: '在线玩家大厅',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'recruitment',
+        name: 'GuestRecruitment',
+        component: () => import('@/views/guest/Recruitment.vue'),
+        meta: { 
+          title: '组队招募',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'team-management',
+        name: 'GuestTeamManagement',
+        component: () => import('@/views/guest/TeamManagement.vue'),
+        meta: { 
+          title: '战队管理',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
       }
     ]
   },

@@ -62,9 +62,9 @@
               <el-icon><ShoppingCart /></el-icon>
               <span>商城点餐</span>
             </el-menu-item>
-            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/social">
+            <el-menu-item v-if="userStore.roomAuthToken" index="/guest/online-lobby">
               <el-icon><ChatDotRound /></el-icon>
-              <span>社交大厅</span>
+              <span>组队招募</span>
             </el-menu-item>
             <el-menu-item v-if="userStore.roomAuthToken" index="/guest/tasks">
               <el-icon><Trophy /></el-icon>
