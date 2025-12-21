@@ -44,7 +44,7 @@
               <el-icon><Star /></el-icon>
               <span>评价管理</span>
             </el-menu-item>
-            <el-menu-item index="/admin/reports">
+            <el-menu-item index="/admin/financial-report">
               <el-icon><Document /></el-icon>
               <span>运营报表</span>
             </el-menu-item>

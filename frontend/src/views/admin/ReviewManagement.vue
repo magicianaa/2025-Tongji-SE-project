@@ -1,6 +1,6 @@
 <template>
   <div class="review-management">
-    <el-page-header @back="$router.push('/admin/dashboard')" content="评价管理" />
+    <el-page-header @back="$router.back()" content="评价管理" />
 
     <!-- 筛选工具栏 -->
     <el-card class="filter-card" shadow="never">

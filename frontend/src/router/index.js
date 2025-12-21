@@ -59,6 +59,16 @@ const routes = [
           requiresAuth: true,
           roles: ['ADMIN']
         }
+      },
+      {
+        path: 'reviews',
+        name: 'AdminReviewManagement',
+        component: () => import('@/views/admin/ReviewManagement.vue'),
+        meta: { 
+          title: '评价管理',
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }
       }
     ]
   },
@@ -156,16 +166,6 @@ const routes = [
         component: () => import('@/views/staff/PointsShopManagement.vue'),
         meta: { 
           title: '积分商城管理',
-          requiresAuth: true,
-          roles: ['STAFF']
-        }
-      },
-      {
-        path: 'reviews',
-        name: 'StaffReviewManagement',
-        component: () => import('@/views/admin/ReviewManagement.vue'),
-        meta: { 
-          title: '评价管理',
           requiresAuth: true,
           roles: ['STAFF']
         }
