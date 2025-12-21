@@ -12,6 +12,8 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 $RECYCLE.BIN/
+*.lnk
+.directory
 
 # ===== IDE 和编辑器 =====
 # IntelliJ IDEA
@@ -116,9 +118,15 @@ frontend/.vite/
 frontend/.cache/
 frontend/coverage/
 **/node_modules/
-package-lock.json
+# 锁文件（保留package-lock.json，忽略其他）
+# package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# 前端编译缓存
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
 
 # ===== 测试相关 =====
 # 测试覆盖率报告
@@ -152,6 +160,8 @@ docker-compose.*.yml
 .docker/
 docker-data/
 volumes/
+mysql-data/
+redis-data/
 
 # Docker 日志
 docker-logs/
@@ -183,13 +193,22 @@ backend/logs/
 backend/src/main/resources/application-local.yml
 backend/src/test/resources/
 
-# 编译后的class文件
+# 编译后的class文件和生成文件
 backend/target/classes/
 backend/target/generated-sources/
 backend/target/generated-test-sources/
 backend/target/test-classes/
 backend/target/*.jar
+backend/target/*.jar.original
 backend/target/*.war
+
+# Maven 编译信息
+backend/target/maven-status/
+backend/target/maven-archiver/
+
+# Surefire 测试报告
+backend/target/surefire-reports/
+backend/target/failsafe-reports/
 
 # API测试文件（可选保留）
 # *.http
@@ -208,8 +227,21 @@ task_test_*.json
 redemption_test_*.json
 *_points_transaction.json
 
+# 报表系统测试和导出文件（Phase 5）
+financial_report_*.csv
+hardware_analysis_*.csv
+dashboard_*.json
+report_export_*.csv
+*_report_test.json
+
 # 临时修复文档（开发完成后可删除）
 *_FIX.md
+
+# 临时脚本
+rebuild-*.ps1
+deploy-*.ps1
+test-*.sh
+*.ps1.backup
 *_REPORT.md
 BILLING_DISCOUNT_AND_POINTS_FIX.md
 
@@ -256,3 +288,23 @@ build/
 TODO.txt
 NOTES.md
 .notes/
+
+# ===== Phase 5 报表系统专用忽略 =====
+# 导出的报表文件（CSV/Excel）
+*.csv
+!database/*.sql
+exports/
+reports/
+financial_reports/
+hardware_reports/
+
+# 报表缓存和临时数据
+.report-cache/
+report_temp/
+
+# ===== 可选保留的文档（取消注释以忽略） =====
+# Phase3_*.md
+# Phase4_*.md
+# Phase5_*.md
+# WEBSOCKET_*.md
+# *_GUIDE.md

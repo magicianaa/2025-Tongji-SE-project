@@ -1,99 +1,142 @@
 <template>
   <div class="admin-dashboard">
+    <el-page-header title="管理控制台" content="运营看板" style="margin-bottom: 20px" />
+    
+    <!-- 核心指标卡片 -->
     <el-row :gutter="20" class="stats-row">
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <el-icon class="stat-icon revenue"><Money /></el-icon>
-            <div class="stat-info">
-              <div class="stat-label">今日营收</div>
-              <div class="stat-value">¥{{ todayRevenue.toLocaleString() }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="8" :md="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <el-icon class="stat-icon occupancy"><House /></el-icon>
             <div class="stat-info">
               <div class="stat-label">入住率</div>
-              <div class="stat-value">{{ occupancyRate }}%</div>
+              <div class="stat-value">{{ dashboardStats.occupancyRate || 0 }}%</div>
+              <div class="stat-detail">
+                {{ dashboardStats.occupiedRooms || 0 }}/{{ dashboardStats.totalRooms || 0 }} 间
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      
+      <el-col :xs="12" :sm="8" :md="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <el-icon class="stat-icon orders"><ShoppingCart /></el-icon>
+            <el-icon class="stat-icon revenue"><TrendCharts /></el-icon>
             <div class="stat-info">
-              <div class="stat-label">今日订单</div>
-              <div class="stat-value">{{ todayOrders }}</div>
+              <div class="stat-label">RevPAR</div>
+              <div class="stat-value">¥{{ dashboardStats.revPAR || 0 }}</div>
+              <div class="stat-detail">平均客房收益</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      
+      <el-col :xs="12" :sm="8" :md="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <el-icon class="stat-icon guests"><User /></el-icon>
+            <el-icon class="stat-icon alert"><BellFilled /></el-icon>
             <div class="stat-info">
-              <div class="stat-label">在住客人</div>
-              <div class="stat-value">{{ currentGuests }}</div>
+              <div class="stat-label">待处理报警</div>
+              <div class="stat-value warning-text">{{ dashboardStats.pendingAlerts || 0 }}</div>
+              <div class="stat-detail">
+                维修工单 {{ dashboardStats.pendingMaintenanceTickets || 0 }}
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      
+      <el-col :xs="12" :sm="8" :md="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <el-icon class="stat-icon money"><Money /></el-icon>
+            <div class="stat-info">
+              <div class="stat-label">本月营收</div>
+              <div class="stat-value">¥{{ dashboardStats.monthlyRevenue || 0 }}</div>
+              <div class="stat-detail">
+                订单 {{ dashboardStats.monthlyOrders || 0 }} 笔
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" class="charts-row">
-      <el-col :span="16">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>营收趋势（近7天）</span>
+    <!-- 今日数据 -->
+    <el-row :gutter="20" class="stats-row">
+      <el-col :xs="12" :sm="8" :md="6">
+        <el-card shadow="hover" class="stat-card secondary">
+          <div class="stat-content">
+            <el-icon class="stat-icon"><Upload /></el-icon>
+            <div class="stat-info">
+              <div class="stat-label">今日入住</div>
+              <div class="stat-value">{{ dashboardStats.todayCheckIns || 0 }}</div>
             </div>
-          </template>
-          <div class="chart-placeholder">
-            <el-empty description="图表开发中，预留ECharts集成位置" />
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>房间状态分布</span>
+      
+      <el-col :xs="12" :sm="8" :md="6">
+        <el-card shadow="hover" class="stat-card secondary">
+          <div class="stat-content">
+            <el-icon class="stat-icon"><Download /></el-icon>
+            <div class="stat-info">
+              <div class="stat-label">今日退房</div>
+              <div class="stat-value">{{ dashboardStats.todayCheckOuts || 0 }}</div>
             </div>
-          </template>
-          <div class="chart-placeholder">
-            <el-empty description="饼图开发中" />
+          </div>
+        </el-card>
+      </el-col>
+      
+      <el-col :xs="12" :sm="8" :md="6">
+        <el-card shadow="hover" class="stat-card secondary">
+          <div class="stat-content">
+            <el-icon class="stat-icon"><User /></el-icon>
+            <div class="stat-info">
+              <div class="stat-label">活跃会员</div>
+              <div class="stat-value">{{ dashboardStats.activeMembers || 0 }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="12" :sm="8" :md="6">
+        <el-card shadow="hover" class="stat-card secondary">
+          <div class="stat-content">
+            <el-icon class="stat-icon"><Refresh /></el-icon>
+            <div class="stat-info">
+              <div class="stat-label">最后更新</div>
+              <div class="stat-value small">{{ lastUpdateTime }}</div>
+            </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20">
-      <el-col :span="12">
+    <!-- 快捷入口 -->
+    <el-row :gutter="20" class="quick-actions">
+      <el-col :span="24">
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>待办事项</span>
-              <el-badge :value="pendingTasks" class="item" />
+              <span>快捷入口</span>
             </div>
           </template>
-          <el-empty description="暂无待办事项" />
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>最新预订</span>
-            </div>
-          </template>
-          <el-empty description="暂无新预订" />
+          <div class="action-buttons">
+            <el-button type="primary" @click="$router.push('/admin/financial-report')">
+              <el-icon><Document /></el-icon>
+              财务报表
+            </el-button>
+            <el-button type="success" @click="$router.push('/admin/hardware-analysis')">
+              <el-icon><Monitor /></el-icon>
+              硬件分析
+            </el-button>
+            <el-button type="warning" @click="refreshDashboard">
+              <el-icon><Refresh /></el-icon>
+              刷新数据
+            </el-button>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -101,18 +144,50 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Money, House, ShoppingCart, User } from '@element-plus/icons-vue'
+import { ref, onMounted, computed } from 'vue'
+import { 
+  Money, House, User, TrendCharts, BellFilled, 
+  Upload, Download, Refresh, Document, Monitor 
+} from '@element-plus/icons-vue'
+import { getDashboardStats } from '@/api/report'
+import { ElMessage } from 'element-plus'
 
-const todayRevenue = ref(12580)
-const occupancyRate = ref(78)
-const todayOrders = ref(45)
-const currentGuests = ref(32)
-const pendingTasks = ref(5)
+const dashboardStats = ref({})
+const loading = ref(false)
+
+// 计算最后更新时间
+const lastUpdateTime = computed(() => {
+  const now = new Date()
+  return now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+})
+
+// 加载看板数据
+const loadDashboardData = async () => {
+  loading.value = true
+  try {
+    const data = await getDashboardStats()
+    dashboardStats.value = data
+  } catch (error) {
+    console.error('加载看板数据失败:', error)
+    ElMessage.error('加载看板数据失败：' + (error.message || '请检查网络连接'))
+  } finally {
+    loading.value = false
+  }
+}
+
+// 刷新看板
+const refreshDashboard = () => {
+  loadDashboardData()
+  ElMessage.success('数据已刷新')
+}
 
 onMounted(() => {
-  // TODO: 从API获取实时数据
-  console.log('Admin Dashboard mounted')
+  loadDashboardData()
+  // 每30秒自动刷新一次
+  const interval = setInterval(loadDashboardData, 30000)
+  
+  // 组件卸载时清除定时器
+  return () => clearInterval(interval)
 })
 </script>
 
@@ -128,27 +203,30 @@ onMounted(() => {
 .stat-card {
   border-radius: 8px;
   transition: transform 0.3s;
+  height: 100%;
 }
 
 .stat-card:hover {
   transform: translateY(-5px);
 }
 
+.stat-card.secondary {
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+}
+
 .stat-content {
   display: flex;
   align-items: center;
   gap: 15px;
+  padding: 10px 0;
 }
 
 .stat-icon {
-  font-size: 48px;
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.stat-icon.revenue {
-  color: #67c23a;
-  background-color: #f0f9ff;
+  font-size: 42px;
+  padding: 12px;
+  border-radius: 12px;
+  color: #409eff;
+  background-color: #ecf5ff;
 }
 
 .stat-icon.occupancy {
@@ -156,14 +234,19 @@ onMounted(() => {
   background-color: #ecf5ff;
 }
 
-.stat-icon.orders {
-  color: #e6a23c;
-  background-color: #fdf6ec;
+.stat-icon.revenue {
+  color: #67c23a;
+  background-color: #f0f9ff;
 }
 
-.stat-icon.guests {
+.stat-icon.alert {
   color: #f56c6c;
   background-color: #fef0f0;
+}
+
+.stat-icon.money {
+  color: #e6a23c;
+  background-color: #fdf6ec;
 }
 
 .stat-info {
@@ -177,13 +260,47 @@ onMounted(() => {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   color: #303133;
+  line-height: 1.2;
 }
 
-.charts-row {
-  margin-bottom: 20px;
+.stat-value.small {
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.stat-value.warning-text {
+  color: #f56c6c;
+}
+
+.stat-detail {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.quick-actions {
+  margin-top: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  flex: 1;
+  min-width: 140px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
 }
 
 .chart-placeholder {
@@ -193,9 +310,19 @@ onMounted(() => {
   justify-content: center;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .stat-value {
+    font-size: 22px;
+  }
+  
+  .stat-icon {
+    font-size: 36px;
+    padding: 8px;
+  }
+  
+  .action-buttons .el-button {
+    flex: 1 1 100%;
+  }
 }
 </style>

@@ -35,6 +35,11 @@ request.interceptors.response.use(
   response => {
     const res = response.data
     
+    // 如果是Blob类型响应（文件下载），直接返回
+    if (res instanceof Blob) {
+      return res
+    }
+    
     // 根据后端返回的 Result 结构判断
     if (res.code === 200) {
       return res.data

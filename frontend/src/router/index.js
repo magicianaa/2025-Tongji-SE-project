@@ -39,6 +39,26 @@ const routes = [
           requiresAuth: true,
           roles: ['ADMIN']
         }
+      },
+      {
+        path: 'financial-report',
+        name: 'AdminFinancialReport',
+        component: () => import('@/views/admin/FinancialReport.vue'),
+        meta: { 
+          title: '财务报表',
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }
+      },
+      {
+        path: 'hardware-analysis',
+        name: 'AdminHardwareAnalysis',
+        component: () => import('@/views/admin/HardwareAnalysis.vue'),
+        meta: { 
+          title: '硬件损耗分析',
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }
       }
     ]
   },
