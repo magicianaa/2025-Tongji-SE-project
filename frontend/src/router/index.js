@@ -139,6 +139,16 @@ const routes = [
           requiresAuth: true,
           roles: ['STAFF']
         }
+      },
+      {
+        path: 'reviews',
+        name: 'StaffReviewManagement',
+        component: () => import('@/views/admin/ReviewManagement.vue'),
+        meta: { 
+          title: '评价管理',
+          requiresAuth: true,
+          roles: ['STAFF']
+        }
       }
     ]
   },
@@ -256,6 +266,16 @@ const routes = [
         component: () => import('@/views/guest/TeamManagement.vue'),
         meta: { 
           title: '战队管理',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'review/submit',
+        name: 'GuestReviewSubmit',
+        component: () => import('@/views/guest/ReviewSubmit.vue'),
+        meta: { 
+          title: '提交评价',
           requiresAuth: true,
           roles: ['GUEST']
         }

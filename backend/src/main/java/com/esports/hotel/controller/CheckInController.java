@@ -35,4 +35,15 @@ public class CheckInController {
         CheckInResponse response = checkInService.checkIn(request);
         return Result.success(response);
     }
+
+    /**
+     * 获取入住记录详情
+     */
+    @GetMapping("/records/{recordId}")
+    @Operation(summary = "获取入住记录详情", description = "根据recordId获取入住记录的详细信息")
+    public Result<CheckInResponse> getCheckInRecord(@PathVariable Long recordId) {
+        log.info("获取入住记录详情: recordId={}", recordId);
+        CheckInResponse response = checkInService.getCheckInRecordDetail(recordId);
+        return Result.success(response);
+    }
 }

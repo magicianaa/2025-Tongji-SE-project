@@ -40,6 +40,10 @@
               <el-icon><DataAnalysis /></el-icon>
               <span>数据看板</span>
             </el-menu-item>
+            <el-menu-item index="/admin/reviews">
+              <el-icon><Star /></el-icon>
+              <span>评价管理</span>
+            </el-menu-item>
             <el-menu-item index="/admin/reports">
               <el-icon><Document /></el-icon>
               <span>运营报表</span>
@@ -73,7 +77,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { Setting, User, DataAnalysis, Document, ArrowDown } from '@element-plus/icons-vue'
+import { Setting, User, DataAnalysis, Document, ArrowDown, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

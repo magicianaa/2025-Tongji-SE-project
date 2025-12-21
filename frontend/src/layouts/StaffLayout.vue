@@ -72,6 +72,10 @@
               <el-icon><ShoppingBag /></el-icon>
               <span>积分商城</span>
             </el-menu-item>
+            <el-menu-item index="/staff/reviews">
+              <el-icon><Star /></el-icon>
+              <span>评价管理</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -93,7 +97,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { Monitor, User, HomeFilled, House, ShoppingCart, Tools, List, ArrowDown, ShoppingBag } from '@element-plus/icons-vue'
+import { Monitor, User, HomeFilled, House, ShoppingCart, Tools, List, ArrowDown, ShoppingBag, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

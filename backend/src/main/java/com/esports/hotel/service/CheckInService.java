@@ -42,6 +42,44 @@ public class CheckInService {
     private static final String DEFAULT_PASSWORD_HASH = "$2a$10$bzHP.b9DCoYHglGZYksHXuCgJgUN5yNMHEDsqzAdmGy3AnXStt8mu";
 
     /**
+     * 获取入住记录详情
+     */
+    public CheckInResponse getCheckInRecordDetail(Long recordId) {
+        // 1. 查询入住记录
+        CheckInRecord record = checkInRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new BusinessException("入住记录不存在");
+        }
+
+        // 2. 查询房间信息
+        Room room = roomMapper.selectById(record.getRoomId());
+        if (room == null) {
+            throw new BusinessException("房间信息不存在");
+        }
+
+        // 3. 组装响应数据
+        CheckInResponse response = new CheckInResponse();
+        response.setRoomId(room.getRoomId());
+        response.setRoomNo(room.getRoomNo());
+        response.setCheckInTime(record.getActualCheckin());
+        response.setExpectedCheckout(record.getExpectedCheckout());
+        response.setPricePerDay(room.getPricePerDay());
+        response.setCurrentOccupancy(1); // 简化处理
+        response.setMaxOccupancy(room.getMaxOccupancy());
+        
+        // 查询住客信息
+        Guest guest = guestMapper.selectById(record.getGuestId());
+        if (guest != null) {
+            CheckInResponse.GuestDetail guestDetail = new CheckInResponse.GuestDetail();
+            guestDetail.setGuestId(guest.getGuestId());
+            guestDetail.setRealName(guest.getRealName());
+            response.setGuests(List.of(guestDetail));
+        }
+
+        return response;
+    }
+
+    /**
      * 办理多人入住登记
      */
     @Transactional(rollbackFor = Exception.class)
