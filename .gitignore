@@ -302,9 +302,36 @@ hardware_reports/
 .report-cache/
 report_temp/
 
-# ===== 可选保留的文档（取消注释以忽略） =====
-# Phase3_*.md
-# Phase4_*.md
-# Phase5_*.md
-# WEBSOCKET_*.md
-# *_GUIDE.md
+# ===== 开发文档和指南（避免上传到仓库） =====
+# Phase 阶段性文档
+Phase*.md
+Phase*_*.md
+
+# WebSocket 相关文档
+WEBSOCKET_*.md
+WebSocket*.md
+
+# 各类指南文档
+*_GUIDE.md
+*_GUIDE*.md
+DEPLOYMENT_GUIDE.md
+QUICK_START.md
+
+# 部署和启动脚本
+deploy.sh
+deploy*.sh
+start*.sh
+stop*.sh
+restart*.sh
+rebuild*.sh
+rebuild*.ps1
+
+# Nginx 配置示例
+nginx.conf.example
+nginx*.conf.example
+
+# Docker 相关文档（保留主要的 DOCKER.md）
+# DOCKER_*.md
+
+# 招聘简化文档
+RECRUITMENT_SIMPLIFICATION.md
