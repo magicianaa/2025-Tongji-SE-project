@@ -48,4 +48,13 @@ public class BookingResponse {
 
     @Schema(description = "特殊要求")
     private String specialRequests;
+
+    @Schema(description = "订金支付状态")
+    private String depositPaymentStatus;
+
+    @Schema(description = "订金支付方式")
+    private String depositPaymentMethod;
+
+    @Schema(description = "订金支付时间")
+    private LocalDateTime depositPaymentTime;
 }

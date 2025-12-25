@@ -44,9 +44,9 @@ request.interceptors.response.use(
     if (res.code === 200) {
       return res.data
     } else {
-      // 业务错误 - 但不显示错误消息（由调用方决定）
+      // 业务错误 - 显示后端返回的详细错误信息
       console.warn('业务错误:', res.code, res.message)
-      // ElMessage.error(res.message || '请求失败')
+      ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
     }
   },
@@ -54,24 +54,25 @@ request.interceptors.response.use(
     console.error('响应错误：', error)
     
     if (error.response) {
+      const errorMessage = error.response.data?.message || error.message
       switch (error.response.status) {
         case 401:
-          ElMessage.error('未授权，请重新登录')
+          ElMessage.error(errorMessage || '未授权，请重新登录')
           // 清除 token 并跳转到登录页
           const userStore = useUserStore()
           userStore.logout()
           break
         case 403:
-          ElMessage.error('拒绝访问')
+          ElMessage.error(errorMessage || '拒绝访问')
           break
         case 404:
-          ElMessage.error('请求资源不存在')
+          ElMessage.error(errorMessage || '请求资源不存在')
           break
         case 500:
-          ElMessage.error('服务器错误')
+          ElMessage.error(errorMessage || '服务器错误')
           break
         default:
-          ElMessage.error(error.response.data.message || '请求失败')
+          ElMessage.error(errorMessage || '请求失败')
       }
     } else {
       ElMessage.error('网络连接失败')

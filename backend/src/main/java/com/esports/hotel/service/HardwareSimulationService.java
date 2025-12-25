@@ -81,6 +81,7 @@ public class HardwareSimulationService {
 
     /**
      * 定时任务：每隔N秒生成一次数据
+     * 只为已入住(OCCUPIED)的房间生成数据，未入住的房间显示未开机
      */
     @Scheduled(fixedDelayString = "${hardware.simulator.interval:5}000")
     @Transactional(rollbackFor = Exception.class)
@@ -93,20 +94,56 @@ public class HardwareSimulationService {
         List<HardwareTelemetryDTO> telemetryList = new ArrayList<>();
 
         for (Room room : rooms) {
-            HardwareTelemetryDTO telemetry = generateSingleRoomData(room);
+            HardwareTelemetryDTO telemetry;
+            
+            // 只为OCCUPIED（已入住）的房间生成真实数据
+            if ("OCCUPIED".equals(room.getStatus())) {
+                telemetry = generateSingleRoomData(room);
+                
+                // 更新数据库
+                updateHardwareStatus(telemetry);
+                
+                // 检测异常并触发报警
+                checkAndHandleAlert(telemetry);
+            } else {
+                // 未入住的房间返回未开机状态
+                telemetry = generateOfflineRoomData(room);
+            }
+            
             telemetryList.add(telemetry);
-            
-            // 更新数据库
-            updateHardwareStatus(telemetry);
-            
-            // 检测异常并触发报警
-            checkAndHandleAlert(telemetry);
         }
 
         // 通过 WebSocket 广播所有房间数据
         messagingTemplate.convertAndSend("/topic/hardware", telemetryList);
         
-        log.debug("硬件数据生成完成，共 {} 个房间", rooms.size());
+        log.debug("硬件数据生成完成，共 {} 个房间，其中 {} 个已入住", 
+                rooms.size(), 
+                rooms.stream().filter(r -> "OCCUPIED".equals(r.getStatus())).count());
+    }
+    
+    /**
+     * 生成未开机房间的数据
+     */
+    private HardwareTelemetryDTO generateOfflineRoomData(Room room) {
+        HardwareTelemetryDTO telemetry = new HardwareTelemetryDTO();
+        telemetry.setRoomId(room.getRoomId());
+        telemetry.setRoomNo(room.getRoomNo());
+        telemetry.setTimestamp(LocalDateTime.now());
+        
+        // 未开机状态
+        telemetry.setCpuTemp(0.0f);
+        telemetry.setGpuTemp(0.0f);
+        telemetry.setNetworkLatency(0);
+        
+        HardwareTelemetryDTO.PeripheralStatus peripheralStatus = new HardwareTelemetryDTO.PeripheralStatus();
+        peripheralStatus.setKeyboard(false);
+        peripheralStatus.setMouse(false);
+        peripheralStatus.setHeadset(false);
+        telemetry.setPeripheralStatus(peripheralStatus);
+        
+        telemetry.setHealthLevel("OFFLINE");
+        
+        return telemetry;
     }
 
     /**
@@ -210,7 +247,7 @@ public class HardwareSimulationService {
 
     /**
      * 检测异常并处理报警逻辑
-     * 规则：连续3次RED状态触发报警
+     * 规则：连续5次RED状态触发报警（修改from 3次）
      */
     private void checkAndHandleAlert(HardwareTelemetryDTO telemetry) {
         Long roomId = telemetry.getRoomId();
@@ -220,8 +257,8 @@ public class HardwareSimulationService {
             int count = abnormalCountMap.getOrDefault(roomId, 0) + 1;
             abnormalCountMap.put(roomId, count);
 
-            // 连续3次异常才触发报警（防止误报）
-            if (count >= 3) {
+            // 连续5次异常才触发报警（防止误报）
+            if (count >= 5) {
                 triggerAlert(telemetry);
                 abnormalCountMap.put(roomId, 0); // 重置计数
             }

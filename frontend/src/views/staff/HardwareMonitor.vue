@@ -306,7 +306,8 @@ const getHealthClass = (healthLevel) => {
   return {
     'health-green': healthLevel === 'GREEN',
     'health-yellow': healthLevel === 'YELLOW',
-    'health-red': healthLevel === 'RED'
+    'health-red': healthLevel === 'RED',
+    'health-offline': healthLevel === 'OFFLINE'
   }
 }
 
@@ -315,7 +316,8 @@ const getHealthTagType = (healthLevel) => {
   const typeMap = {
     GREEN: 'success',
     YELLOW: 'warning',
-    RED: 'danger'
+    RED: 'danger',
+    OFFLINE: 'info'
   }
   return typeMap[healthLevel] || ''
 }
@@ -325,13 +327,15 @@ const getHealthText = (healthLevel) => {
   const textMap = {
     GREEN: '正常',
     YELLOW: '预警',
-    RED: '告警'
+    RED: '告警',
+    OFFLINE: '未开机'
   }
   return textMap[healthLevel] || healthLevel
 }
 
 // 获取温度样式类
 const getTempClass = (temp) => {
+  if (temp === 0) return 'temp-offline'
   if (temp >= 95) return 'temp-danger'
   if (temp >= 85) return 'temp-warning'
   return 'temp-normal'
@@ -339,6 +343,7 @@ const getTempClass = (temp) => {
 
 // 获取延迟样式类
 const getLatencyClass = (latency) => {
+  if (latency === 0) return 'temp-offline'
   if (latency >= 100) return 'temp-danger'
   if (latency >= 50) return 'temp-warning'
   return 'temp-normal'
@@ -470,6 +475,12 @@ onUnmounted(() => {
   animation: redPulse 1.5s infinite;
 }
 
+.hardware-card.health-offline {
+  border-color: #909399;
+  background: linear-gradient(135deg, #f4f4f5 0%, #e5e7eb 100%);
+  opacity: 0.75;
+}
+
 @keyframes redPulse {
   0%, 100% {
     box-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
@@ -543,6 +554,10 @@ onUnmounted(() => {
 
 .metric-value.temp-danger {
   color: #f56c6c;
+}
+
+.metric-value.temp-offline {
+  color: #909399;
 }
 
 .card-footer {

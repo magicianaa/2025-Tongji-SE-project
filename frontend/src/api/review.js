@@ -6,6 +6,63 @@ import request from '@/utils/request'
 // ==================== 住客端 ====================
 
 /**
+ * 获取我的入住记录（用于评价）
+ * @param {number} pageNum - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise}
+ */
+export function getMyCheckinHistory(pageNum = 1, pageSize = 10) {
+  return request({
+    url: '/reviews/my-checkin-history',
+    method: 'get',
+    params: { pageNum, pageSize }
+  })
+}
+
+/**
+ * 创建评价（新接口）
+ * @param {Object} data - 评价数据
+ * @param {number} data.recordId - 入住记录ID
+ * @param {number} data.score - 评分(1-5)
+ * @param {string} data.comment - 评价内容
+ * @returns {Promise}
+ */
+export function createReview(data) {
+  return request({
+    url: '/reviews/create',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 获取房间评价列表
+ * @param {number} roomId - 房间ID
+ * @param {number} pageNum - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise}
+ */
+export function getRoomReviews(roomId, pageNum = 1, pageSize = 10) {
+  return request({
+    url: `/reviews/room/${roomId}`,
+    method: 'get',
+    params: { pageNum, pageSize }
+  })
+}
+
+/**
+ * 获取房间平均评分
+ * @param {number} roomId - 房间ID
+ * @returns {Promise}
+ */
+export function getAverageScore(roomId) {
+  return request({
+    url: `/reviews/room/${roomId}/average-score`,
+    method: 'get'
+  })
+}
+
+/**
  * 提交评价
  */
 export function submitReview(data) {

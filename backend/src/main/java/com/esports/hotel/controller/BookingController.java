@@ -61,4 +61,20 @@ public class BookingController {
         BookingResponse booking = bookingService.getBookingByPhone(phone);
         return Result.success(booking);
     }
+
+    @Operation(summary = "支付订金", description = "支付预订订金")
+    @PostMapping("/{bookingId}/pay-deposit")
+    public Result<Void> payDeposit(
+            @PathVariable Long bookingId,
+            @RequestParam String paymentMethod) {
+        bookingService.payDeposit(bookingId, paymentMethod);
+        return Result.success(null, "订金支付成功");
+    }
+
+    @Operation(summary = "退订金", description = "取消预订并退订金")
+    @PostMapping("/{bookingId}/refund-deposit")
+    public Result<Void> refundDeposit(@PathVariable Long bookingId) {
+        bookingService.refundDeposit(bookingId);
+        return Result.success(null, "订金退款成功");
+    }
 }

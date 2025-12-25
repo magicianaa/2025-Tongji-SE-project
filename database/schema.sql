@@ -87,6 +87,9 @@ CREATE TABLE `tb_booking` (
   `main_guest_name` VARCHAR(50) DEFAULT NULL COMMENT '主住客姓名',
   `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
   `special_requests` TEXT DEFAULT NULL COMMENT '特殊要求',
+  `deposit_payment_status` ENUM('UNPAID', 'PAID', 'REFUNDED') DEFAULT 'UNPAID' COMMENT '订金支付状态',
+  `deposit_payment_method` ENUM('CASH', 'WECHAT', 'ALIPAY', 'CARD') DEFAULT NULL COMMENT '订金支付方式',
+  `deposit_payment_time` DATETIME DEFAULT NULL COMMENT '订金支付时间',
   PRIMARY KEY (`booking_id`),
   KEY `idx_guest_id` (`guest_id`),
   KEY `idx_room_id` (`room_id`),
@@ -144,12 +147,14 @@ CREATE TABLE `tb_room_change_log` (
 CREATE TABLE `tb_product` (
   `product_id` BIGINT NOT NULL AUTO_INCREMENT,
   `product_name` VARCHAR(128) NOT NULL,
-  `product_type` ENUM('SNACK', 'BEVERAGE', 'PERIPHERAL') NOT NULL COMMENT '商品类型',
-  `category` VARCHAR(64) DEFAULT NULL COMMENT '分类（如：键盘、鼠标）',
+  `product_type` ENUM('SNACK', 'BEVERAGE', 'PERIPHERAL', 'OTHER') NOT NULL COMMENT '商品类型',
+  `category` VARCHAR(64) DEFAULT NULL COMMENT '分类（如：键盘、鼠标、一次性用品、可重复使用）',
   `price` DECIMAL(10, 2) NOT NULL COMMENT '售价/租赁单价',
   `rental_unit` ENUM('NONE', 'HOURLY', 'DAILY', 'PER_TIME') DEFAULT 'NONE' COMMENT '租赁计费单位',
   `stock_quantity` INT DEFAULT 0 COMMENT '当前库存',
   `stock_threshold` INT DEFAULT 5 COMMENT '库存预警阈值',
+  `max_usage_times` INT DEFAULT NULL COMMENT '最大使用次数（用于床单、被子等可重复使用物品）',
+  `current_usage_times` INT DEFAULT 0 COMMENT '当前已使用次数',
   `image_url` VARCHAR(255) DEFAULT NULL,
   `description` TEXT DEFAULT NULL,
   `is_available` TINYINT(1) DEFAULT 1 COMMENT '是否上架',
@@ -192,6 +197,55 @@ CREATE TABLE `tb_order_item` (
   CONSTRAINT `fk_item_order` FOREIGN KEY (`order_id`) REFERENCES `tb_pos_order` (`order_id`),
   CONSTRAINT `fk_item_product` FOREIGN KEY (`product_id`) REFERENCES `tb_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+-- 清扫记录表
+CREATE TABLE `tb_cleaning_record` (
+  `cleaning_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `room_id` BIGINT NOT NULL COMMENT '房间ID',
+  `staff_id` BIGINT NOT NULL COMMENT '清扫员工ID',
+  `cleaning_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '清扫完成时间',
+  `cleaning_type` ENUM('CHECKOUT', 'DAILY', 'DEEP') DEFAULT 'CHECKOUT' COMMENT '清扫类型：退房清扫、日常清扫、深度清扫',
+  `notes` TEXT DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`cleaning_id`),
+  KEY `idx_room_id` (`room_id`),
+  KEY `idx_staff_id` (`staff_id`),
+  KEY `idx_cleaning_time` (`cleaning_time`),
+  CONSTRAINT `fk_cleaning_room` FOREIGN KEY (`room_id`) REFERENCES `tb_room` (`room_id`),
+  CONSTRAINT `fk_cleaning_staff` FOREIGN KEY (`staff_id`) REFERENCES `tb_staff` (`staff_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='清扫记录表';
+
+-- 物资消耗记录表
+CREATE TABLE `tb_supply_usage` (
+  `usage_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `cleaning_id` BIGINT NOT NULL COMMENT '关联清扫记录',
+  `product_id` BIGINT NOT NULL COMMENT '物资ID',
+  `quantity` INT NOT NULL DEFAULT 1 COMMENT '消耗数量',
+  `usage_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '消耗时间',
+  PRIMARY KEY (`usage_id`),
+  KEY `idx_cleaning_id` (`cleaning_id`),
+  KEY `idx_product_id` (`product_id`),
+  CONSTRAINT `fk_usage_cleaning` FOREIGN KEY (`cleaning_id`) REFERENCES `tb_cleaning_record` (`cleaning_id`),
+  CONSTRAINT `fk_usage_product` FOREIGN KEY (`product_id`) REFERENCES `tb_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物资消耗记录表';
+
+-- 进货记录表
+CREATE TABLE `tb_procurement` (
+  `procurement_id` BIGINT NOT NULL AUTO_INCREMENT,
+  `product_id` BIGINT NOT NULL COMMENT '商品ID',
+  `quantity` INT NOT NULL COMMENT '进货数量',
+  `unit_cost` DECIMAL(10, 2) NOT NULL COMMENT '进货单价',
+  `total_cost` DECIMAL(10, 2) NOT NULL COMMENT '总成本',
+  `supplier` VARCHAR(128) DEFAULT NULL COMMENT '供应商',
+  `procurement_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '进货时间',
+  `operator_id` BIGINT NOT NULL COMMENT '操作员工ID',
+  `notes` TEXT DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`procurement_id`),
+  KEY `idx_product_id` (`product_id`),
+  KEY `idx_procurement_time` (`procurement_time`),
+  KEY `idx_operator_id` (`operator_id`),
+  CONSTRAINT `fk_procurement_product` FOREIGN KEY (`product_id`) REFERENCES `tb_product` (`product_id`),
+  CONSTRAINT `fk_procurement_operator` FOREIGN KEY (`operator_id`) REFERENCES `tb_staff` (`staff_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='进货记录表';
 
 -- --------------------------------------------
 -- 4. 硬件模拟与监控模块

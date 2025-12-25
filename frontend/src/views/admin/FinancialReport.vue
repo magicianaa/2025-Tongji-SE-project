@@ -45,6 +45,69 @@
       </el-form>
     </el-card>
 
+    <!-- ECharts图表展示 -->
+    <el-row :gutter="20" v-if="reportData" style="margin-top: 20px">
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <span>收入结构分布</span>
+          </template>
+          <div ref="revenueChartRef" style="width: 100%; height: 300px"></div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <span>订单量统计</span>
+          </template>
+          <div ref="orderChartRef" style="width: 100%; height: 300px"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card class="filter-card" style="margin-top: 20px">
+      <el-form :inline="true" :model="queryForm" class="filter-form">
+        <el-form-item label="报表类型">
+          <el-radio-group v-model="queryForm.reportType" @change="handleReportTypeChange">
+            <el-radio-button label="DAILY">日报</el-radio-button>
+            <el-radio-button label="MONTHLY">月报</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item v-if="queryForm.reportType === 'DAILY'" label="选择日期">
+          <el-date-picker
+            v-model="queryForm.date"
+            type="date"
+            placeholder="选择日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            @change="loadReport"
+          />
+        </el-form-item>
+
+        <el-form-item v-else label="选择月份">
+          <el-date-picker
+            v-model="queryForm.monthDate"
+            type="month"
+            placeholder="选择月份"
+            format="YYYY-MM"
+            @change="handleMonthChange"
+          />
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="loadReport" :loading="loading">
+            <el-icon><Search /></el-icon>
+            查询
+          </el-button>
+          <el-button type="success" @click="exportReport">
+            <el-icon><Download /></el-icon>
+            导出CSV
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
     <el-card v-if="reportData" class="report-card" style="margin-top: 20px">
       <template #header>
         <div class="card-header">
@@ -63,10 +126,28 @@
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
           <div class="metric-item">
+            <div class="metric-label">总支出</div>
+            <div class="metric-value danger">¥{{ reportData.totalExpense || 0 }}</div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6">
+          <div class="metric-item">
+            <div class="metric-label">净利润</div>
+            <div class="metric-value success">¥{{ reportData.netProfit || reportData.totalRevenue }}</div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6">
+          <div class="metric-item">
             <div class="metric-label">客房收入</div>
             <div class="metric-value">¥{{ reportData.roomRevenue }}</div>
           </div>
         </el-col>
+      </el-row>
+
+      <el-divider />
+
+      <!-- 收入明细 -->
+      <el-row :gutter="20" class="metrics-row">
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
           <div class="metric-item">
             <div class="metric-label">POS收入</div>
@@ -77,6 +158,18 @@
           <div class="metric-item">
             <div class="metric-label">积分收入</div>
             <div class="metric-value">¥{{ reportData.pointsRevenue }}</div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6">
+          <div class="metric-item">
+            <div class="metric-label">进货成本</div>
+            <div class="metric-value warning">¥{{ reportData.procurementCost || 0 }}</div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6">
+          <div class="metric-item">
+            <div class="metric-label">维修成本</div>
+            <div class="metric-value warning">¥{{ reportData.maintenanceCost || 0 }}</div>
           </div>
         </el-col>
       </el-row>
@@ -144,13 +237,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { Search, Download } from '@element-plus/icons-vue'
 import { getDailyReport, getMonthlyReport, exportFinancialReport } from '@/api/report'
 import { ElMessage } from 'element-plus'
+import * as echarts from 'echarts'
 
 const loading = ref(false)
 const reportData = ref(null)
+const revenueChartRef = ref(null)
+const orderChartRef = ref(null)
+let revenueChart = null
+let orderChart = null
 
 const queryForm = ref({
   reportType: 'DAILY',
@@ -179,11 +277,97 @@ const loadReport = async () => {
     }
 
     reportData.value = response
+    
+    // 等待DOM更新后渲染图表
+    await nextTick()
+    renderCharts()
   } catch (error) {
     console.error('加载报表失败:', error)
     ElMessage.error('加载报表失败：' + (error.message || '请检查网络连接'))
   } finally {
     loading.value = false
+  }
+}
+
+// 渲染ECharts图表
+const renderCharts = () => {
+  if (!reportData.value) return
+  
+  // 渲染收入结构饼图
+  if (revenueChartRef.value) {
+    if (revenueChart) {
+      revenueChart.dispose()
+    }
+    revenueChart = echarts.init(revenueChartRef.value)
+    
+    const revenueOption = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: ¥{c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left'
+      },
+      series: [
+        {
+          name: '收入来源',
+          type: 'pie',
+          radius: '50%',
+          data: [
+            { value: reportData.value.roomRevenue, name: '客房收入' },
+            { value: reportData.value.posRevenue, name: 'POS收入' },
+            { value: reportData.value.pointsRevenue, name: '积分收入' }
+          ],
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    }
+    revenueChart.setOption(revenueOption)
+  }
+  
+  // 渲染订单量柱状图
+  if (orderChartRef.value) {
+    if (orderChart) {
+      orderChart.dispose()
+    }
+    orderChart = echarts.init(orderChartRef.value)
+    
+    const orderOption = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: ['入住订单', 'POS订单']
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          name: '订单量',
+          type: 'bar',
+          data: [reportData.value.checkInCount, reportData.value.posOrderCount],
+          itemStyle: {
+            color: function(params) {
+              const colors = ['#5470c6', '#91cc75']
+              return colors[params.dataIndex]
+            }
+          }
+        }
+      ]
+    }
+    orderChart.setOption(orderOption)
   }
 }
 
@@ -238,6 +422,8 @@ loadReport()
 <style scoped>
 .financial-report {
   padding: 20px;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .filter-card {
@@ -292,6 +478,14 @@ loadReport()
 
 .metric-value.success {
   color: #67c23a;
+}
+
+.metric-value.danger {
+  color: #f56c6c;
+}
+
+.metric-value.warning {
+  color: #e6a23c;
 }
 
 @media (max-width: 768px) {

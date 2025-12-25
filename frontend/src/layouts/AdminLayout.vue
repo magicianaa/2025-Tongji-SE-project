@@ -48,6 +48,14 @@
               <el-icon><Document /></el-icon>
               <span>运营报表</span>
             </el-menu-item>
+            <el-menu-item index="/admin/products">
+              <el-icon><ShoppingBag /></el-icon>
+              <span>商品管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/procurement">
+              <el-icon><Box /></el-icon>
+              <span>进货管理</span>
+            </el-menu-item>
             <el-menu-item index="/admin/staff">
               <el-icon><User /></el-icon>
               <span>员工管理</span>
@@ -77,7 +85,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { Setting, User, DataAnalysis, Document, ArrowDown, Star } from '@element-plus/icons-vue'
+import { Setting, User, DataAnalysis, Document, ArrowDown, Star, ShoppingBag, Box } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

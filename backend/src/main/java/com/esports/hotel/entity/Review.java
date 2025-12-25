@@ -84,4 +84,32 @@ public class Review implements Serializable {
      */
     @TableField("handler_id")
     private Long handlerId;
+
+    // ========== 以下字段不存储在数据库，仅用于返回给前端 ==========
+
+    /**
+     * 评价人姓名（临时字段，脱敏显示）
+     */
+    @TableField(exist = false)
+    private String guestName;
+
+    /**
+     * 房间号（临时字段）
+     */
+    @TableField(exist = false)
+    private String roomNo;
+
+    /**
+     * 入住时间（临时字段）
+     */
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime checkinTime;
+
+    /**
+     * 退房时间（临时字段）
+     */
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime checkoutTime;
 }

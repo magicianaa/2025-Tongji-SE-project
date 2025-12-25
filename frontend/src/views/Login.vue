@@ -139,7 +139,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { login, register, sendSmsCode } from '@/api/auth'
 
@@ -276,8 +276,20 @@ const handleSendSms = async () => {
   }
   
   try {
-    await sendSmsCode(registerForm.phone)
-    ElMessage.success('验证码已发送')
+    const code = await sendSmsCode(registerForm.phone)
+    
+    // 使用ElMessageBox弹窗显示验证码（模拟项目专用）
+    ElMessageBox.alert(
+      `您的验证码是：<br/><h2 style="color: #409eff; text-align: center; margin: 20px 0;">${code}</h2><p style="text-align: center; color: #999;">验证码5分钟内有效</p>`,
+      '验证码（模拟项目）',
+      {
+        confirmButtonText: '我知道了',
+        dangerouslyUseHTMLString: true,
+        type: 'success'
+      }
+    )
+    
+    ElMessage.success('验证码已生成，请查看弹窗')
     
     // 开始倒计时
     smsCountdown.value = 60

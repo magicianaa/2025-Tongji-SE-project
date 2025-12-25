@@ -27,10 +27,10 @@ public class AuthController {
 
     @Operation(summary = "发送短信验证码", description = "注册时需要先调用此接口获取验证码")
     @PostMapping("/sms/send")
-    public Result<Void> sendSmsCode(
+    public Result<String> sendSmsCode(
             @RequestParam @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确") String phone) {
-        authService.sendSmsCode(phone);
-        return Result.success(null, "验证码已发送");
+        String code = authService.sendSmsCode(phone);
+        return Result.success(code, "验证码已发送（模拟项目，直接返回验证码）");
     }
 
     @Operation(summary = "用户注册", description = "住客注册账号")

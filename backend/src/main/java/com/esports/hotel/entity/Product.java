@@ -19,7 +19,7 @@ public class Product {
     
     private String productName;
     
-    private String productType;  // SNACK, BEVERAGE, PERIPHERAL
+    private String productType;  // SNACK, BEVERAGE, PERIPHERAL, OTHER
     
     private String category;
     
@@ -30,6 +30,10 @@ public class Product {
     private Integer stockQuantity;
     
     private Integer stockThreshold;
+    
+    private Integer maxUsageTimes;  // 最大使用次数（床单、被子等可重复使用物品）
+    
+    private Integer currentUsageTimes;  // 当前已使用次数
     
     private String imageUrl;
     

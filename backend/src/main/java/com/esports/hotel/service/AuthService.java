@@ -238,7 +238,7 @@ public class AuthService {
     /**
      * 发送短信验证码（模拟实现）
      */
-    public void sendSmsCode(String phone) {
+    public String sendSmsCode(String phone) {
         // 生成6位随机验证码
         String code = String.format("%06d", (int) (Math.random() * 1000000));
         
@@ -247,5 +247,8 @@ public class AuthService {
         
         // 生产环境需调用真实短信平台API
         log.info("【模拟短信】手机号: {}, 验证码: {} (5分钟内有效)", phone, code);
+        
+        // 返回验证码（仅模拟项目使用）
+        return code;
     }
 }

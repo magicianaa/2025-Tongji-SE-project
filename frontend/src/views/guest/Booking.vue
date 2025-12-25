@@ -81,6 +81,15 @@
                 >
                   {{ room.hasBooking ? '已被预订' : '立即预订' }}
                 </el-button>
+                <el-button 
+                  type="info" 
+                  plain
+                  @click="viewRoomReviews(room)" 
+                  style="width: 100%; margin-top: 8px;"
+                  :icon="Document"
+                >
+                  查看评价
+                </el-button>
               </div>
             </el-card>
           </el-col>
@@ -126,20 +135,51 @@
                   </el-tag>
                 </template>
               </el-table-column>
+              <el-table-column label="支付状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="getPaymentStatusType(row.depositPaymentStatus || 'UNPAID')">
+                    {{ getPaymentStatusName(row.depositPaymentStatus || 'UNPAID') }}
+                  </el-tag>
+                </template>
+              </el-table-column>
               <el-table-column label="押金" width="100">
                 <template #default="{ row }">
                   ¥{{ row.depositAmount }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" fixed="right" width="120">
+              <el-table-column label="操作" fixed="right" width="200">
                 <template #default="{ row }">
                   <el-button 
-                    type="danger" 
+                    v-if="row.depositPaymentStatus === 'UNPAID'"
+                    type="primary" 
                     size="small" 
-                    @click="handleCancelBooking(row)"
-                    :disabled="row.status === 'CANCELLED' || row.status === 'CHECKED_IN'"
+                    @click="handlePayDeposit(row)"
                   >
-                    {{ row.status === 'CANCELLED' ? '已取消' : row.status === 'CHECKED_IN' ? '已入住' : '取消预订' }}
+                    支付订金
+                  </el-button>
+                  <el-button 
+                    v-if="row.depositPaymentStatus === 'PAID' && row.status === 'CONFIRMED'"
+                    type="warning" 
+                    size="small" 
+                    @click="handleRefundDeposit(row)"
+                  >
+                    申请退款
+                  </el-button>
+                  <el-button 
+                    v-if="row.status === 'CANCELLED'"
+                    type="info" 
+                    size="small"
+                    disabled
+                  >
+                    已取消
+                  </el-button>
+                  <el-button 
+                    v-if="row.status === 'CHECKED_IN'"
+                    type="success" 
+                    size="small"
+                    disabled
+                  >
+                    已入住
                   </el-button>
                 </template>
               </el-table-column>
@@ -148,14 +188,29 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <!-- 房间评价对话框 -->
+    <el-dialog
+      v-model="reviewDialogVisible"
+      :title="`${selectedRoom?.roomNo || ''} - 住客评价`"
+      width="700px"
+      top="5vh"
+    >
+      <RoomReviews 
+        v-if="selectedRoom && reviewDialogVisible" 
+        :room-id="selectedRoom.roomId" 
+        :auto-load="true"
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Refresh } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, h } from 'vue'
+import { ElMessage, ElMessageBox, ElRadioGroup, ElRadio } from 'element-plus'
+import { User, Refresh, Document } from '@element-plus/icons-vue'
 import axios from 'axios'
+import RoomReviews from '@/components/RoomReviews.vue'
 
 const activeTab = ref('booking')
 const bookingFormRef = ref(null)
@@ -184,6 +239,10 @@ const bookingRules = {
 
 const availableRooms = ref([])
 const bookingLoading = ref(false)
+
+// 评价对话框
+const reviewDialogVisible = ref(false)
+const selectedRoom = ref(null)
 
 const disabledBeforeToday = (date) => {
   // 允许选择今天及以后的日期
@@ -229,6 +288,12 @@ const loadAvailableRooms = async () => {
     console.error('加载房间失败:', error)
     ElMessage.error('加载可用房间失败')
   }
+}
+
+// 查看房间评价
+const viewRoomReviews = (room) => {
+  selectedRoom.value = room
+  reviewDialogVisible.value = true
 }
 
 const handleBook = async (room) => {
@@ -286,27 +351,17 @@ const handleBook = async (room) => {
     })
 
     if (response.data.code === 200) {
-      ElMessage.success('预订成功！')
+      const bookingResponse = response.data.data
+      ElMessage.success('预订创建成功，请支付订金')
+      
+      // 弹出支付对话框
+      await showPaymentDialog(bookingResponse)
+      
       // 重置表单
       bookingForm.mainGuestName = ''
       bookingForm.specialRequests = ''
-      // 重新加载房间列表以更新预订状态
+      // 重新加载房间列表
       await loadAvailableRooms()
-      // 提示用户可以查看预订
-      ElMessageBox.confirm(
-        '预订已成功创建，是否前往查看我的预订？',
-        '预订成功',
-        {
-          confirmButtonText: '查看预订',
-          cancelButtonText: '继续预订',
-          type: 'success'
-        }
-      ).then(() => {
-        activeTab.value = 'myBookings'
-        loadMyBookings()
-      }).catch(() => {
-        // 用户选择继续预订，不做操作
-      })
     } else {
       ElMessage.error(response.data.message || '预订失败')
     }
@@ -317,6 +372,91 @@ const handleBook = async (room) => {
     }
   } finally {
     bookingLoading.value = false
+  }
+}
+
+// 支付对话框
+const showPaymentDialog = async (bookingResponse) => {
+  const paymentMethodOptions = [
+    { label: '现金支付', value: 'CASH' },
+    { label: '微信支付', value: 'WECHAT' },
+    { label: '支付宝支付', value: 'ALIPAY' },
+    { label: '银行卡支付', value: 'CARD' }
+  ]
+  
+  const paymentMethod = ref('WECHAT')
+  
+  try {
+    await ElMessageBox({
+      title: '支付订金',
+      message: h('div', [
+        h('p', { style: 'margin-bottom: 15px; font-size: 16px;' }, [
+          '预订订金：',
+          h('span', { 
+            style: 'color: #f56c6c; font-weight: bold; font-size: 20px;' 
+          }, `¥${bookingResponse.depositAmount}`)
+        ]),
+        h('p', { style: 'margin-bottom: 10px;' }, '请选择支付方式：'),
+        h(ElRadioGroup, {
+          modelValue: paymentMethod.value,
+          'onUpdate:modelValue': (val) => { paymentMethod.value = val }
+        }, () => paymentMethodOptions.map(option => 
+          h(ElRadio, { label: option.value, key: option.value }, () => option.label)
+        ))
+      ]),
+      showCancelButton: true,
+      confirmButtonText: '确认支付',
+      cancelButtonText: '稍后支付',
+      beforeClose: async (action, instance, done) => {
+        if (action === 'confirm') {
+          instance.confirmButtonLoading = true
+          try {
+            const payResponse = await axios.post(
+              `/api/bookings/${bookingResponse.bookingId}/pay-deposit`,
+              null,
+              {
+                params: { paymentMethod: paymentMethod.value },
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              }
+            )
+            
+            if (payResponse.data.code === 200) {
+              ElMessage.success('支付成功！')
+              done()
+              // 提示查看预订
+              setTimeout(() => {
+                ElMessageBox.confirm(
+                  '支付成功，是否前往查看我的预订？',
+                  '支付成功',
+                  {
+                    confirmButtonText: '查看预订',
+                    cancelButtonText: '继续预订',
+                    type: 'success'
+                  }
+                ).then(() => {
+                  activeTab.value = 'myBookings'
+                  loadMyBookings()
+                }).catch(() => {})
+              }, 100)
+            } else {
+              ElMessage.error(payResponse.data.message || '支付失败')
+            }
+          } catch (error) {
+            console.error('支付失败:', error)
+            ElMessage.error(error.response?.data?.message || '支付失败')
+          } finally {
+            instance.confirmButtonLoading = false
+          }
+        } else {
+          ElMessage.info('您可以稍后在"我的预订"中完成支付')
+          done()
+        }
+      }
+    })
+  } catch (error) {
+    // 用户取消或关闭对话框
   }
 }
 
@@ -352,12 +492,90 @@ const getStatusType = (status) => {
 
 const getStatusName = (status) => {
   const nameMap = {
-    'PENDING': '待确认',
+    'PENDING': '待支付',
     'CONFIRMED': '已确认',
     'CHECKED_IN': '已入住',
     'CANCELLED': '已取消'
   }
   return nameMap[status] || status
+}
+
+const getPaymentStatusType = (status) => {
+  const typeMap = {
+    'UNPAID': 'warning',
+    'PAID': 'success',
+    'REFUNDED': 'info'
+  }
+  return typeMap[status] || 'info'
+}
+
+const getPaymentStatusName = (status) => {
+  const nameMap = {
+    'UNPAID': '未支付',
+    'PAID': '已支付',
+    'REFUNDED': '已退款'
+  }
+  return nameMap[status] || status
+}
+
+const handlePayDeposit = async (booking) => {
+  await showPaymentDialog(booking)
+  loadMyBookings()
+}
+
+const handleRefundDeposit = async (booking) => {
+  // 检查是否可以退款（入住日期之前）
+  const checkinDate = new Date(booking.plannedCheckin)
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  checkinDate.setHours(0, 0, 0, 0)
+  
+  if (now >= checkinDate) {
+    ElMessage.error('已到入住日期，无法退订')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确认申请退款？<br>
+      房间：${booking.roomNo}<br>
+      入住日期：${formatDate(booking.plannedCheckin)}<br>
+      退款金额：¥${booking.depositAmount}`,
+      '申请退款',
+      {
+        confirmButtonText: '确认退款',
+        cancelButtonText: '取消',
+        dangerouslyUseHTMLString: true,
+        type: 'warning'
+      }
+    )
+
+    const response = await axios.post(
+      `/api/bookings/${booking.bookingId}/refund-deposit`,
+      null,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }
+    )
+
+    if (response.data.code === 200) {
+      ElMessage.success('退款成功')
+      loadMyBookings()
+      // 如果在预订tab，也刷新房间列表
+      if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+        loadAvailableRooms()
+      }
+    } else {
+      ElMessage.error(response.data.message || '退款失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('退款失败:', error)
+      ElMessage.error(error.response?.data?.message || '退款失败，请稍后重试')
+    }
+  }
 }
 
 const loadMyBookings = async () => {
@@ -379,46 +597,6 @@ const loadMyBookings = async () => {
     ElMessage.error('加载预订列表失败')
   } finally {
     loadingBookings.value = false
-  }
-}
-
-const handleCancelBooking = async (booking) => {
-  try {
-    await ElMessageBox.confirm(
-      `确认取消预订？<br>
-      房间：${booking.roomNo}<br>
-      入住日期：${formatDate(booking.plannedCheckin)}<br>
-      退房日期：${formatDate(booking.plannedCheckout)}`,
-      '取消预订',
-      {
-        confirmButtonText: '确认取消',
-        cancelButtonText: '我再想想',
-        dangerouslyUseHTMLString: true,
-        type: 'warning'
-      }
-    )
-
-    const response = await axios.delete(`/api/bookings/${booking.bookingId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('预订已取消')
-      loadMyBookings()
-      // 如果在预订tab，也刷新房间列表
-      if (bookingForm.checkInDate && bookingForm.checkOutDate) {
-        loadAvailableRooms()
-      }
-    } else {
-      ElMessage.error(response.data.message || '取消失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('取消预订失败:', error)
-      ElMessage.error(error.response?.data?.message || '取消失败，请稍后重试')
-    }
   }
 }
 

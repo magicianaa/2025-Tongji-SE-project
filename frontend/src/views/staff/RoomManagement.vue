@@ -40,7 +40,7 @@
               </div>
               <div class="info-item">
                 <el-icon><Money /></el-icon>
-                <span>¥{{ room.pricePerHour }}/小时</span>
+                <span>¥{{ room.pricePerDay }}/天</span>
               </div>
               <div class="info-item">
                 <span>楼层: {{ room.floor }}F</span>
@@ -545,7 +545,7 @@ const handleViewDetail = (room) => {
     <p><strong>房型：</strong>${getRoomTypeText(room.roomType)}</p>
     <p><strong>楼层：</strong>${room.floor}楼</p>
     <p><strong>状态：</strong>${getStatusText(room.status)}</p>
-    <p><strong>价格：</strong>¥${room.pricePerHour}/小时</p>
+    <p><strong>价格：</strong>¥${room.pricePerDay}/天</p>
     <p><strong>高级房型：</strong>${room.isPremium ? '是' : '否'}</p>
     `,
     '房间详情',
@@ -639,6 +639,8 @@ onMounted(() => {
 <style scoped>
 .room-management {
   padding: 20px;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .filter-card {

@@ -2,6 +2,7 @@ package com.esports.hotel.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.esports.hotel.dto.CreateReviewRequest;
 import com.esports.hotel.dto.FollowUpRequest;
 import com.esports.hotel.dto.ReviewResponse;
 import com.esports.hotel.dto.ReviewSubmitRequest;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 评价服务
@@ -309,5 +311,180 @@ public class ReviewService {
         }
         
         return response;
+    }
+
+    /**
+     * 获取用户的入住历史记录
+     */
+    public Page<CheckInRecord> getMyCheckinHistory(Long guestId, Integer pageNum, Integer pageSize) {
+        Page<CheckInRecord> page = new Page<>(pageNum, pageSize);
+        
+        LambdaQueryWrapper<CheckInRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CheckInRecord::getGuestId, guestId)
+               .orderByDesc(CheckInRecord::getActualCheckin);
+        
+        Page<CheckInRecord> resultPage = checkInRecordMapper.selectPage(page, wrapper);
+        
+        // 填充关联数据
+        for (CheckInRecord record : resultPage.getRecords()) {
+            // 填充房间信息
+            Room room = roomMapper.selectById(record.getRoomId());
+            if (room != null) {
+                record.setRoomNo(room.getRoomNo());
+                record.setRoomType(room.getRoomType());
+            }
+            
+            // 检查是否已评价
+            LambdaQueryWrapper<Review> reviewWrapper = new LambdaQueryWrapper<>();
+            reviewWrapper.eq(Review::getRecordId, record.getRecordId())
+                        .eq(Review::getGuestId, guestId);
+            Review review = reviewMapper.selectOne(reviewWrapper);
+            
+            if (review != null) {
+                record.setHasReviewed(true);
+                record.setReview(review);
+            } else {
+                record.setHasReviewed(false);
+            }
+        }
+        
+        return resultPage;
+    }
+
+    /**
+     * 创建评价
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void createReview(CreateReviewRequest request, Long guestId) {
+        // 1. 验证入住记录存在且属于当前用户
+        CheckInRecord record = checkInRecordMapper.selectById(request.getRecordId());
+        if (record == null) {
+            throw new RuntimeException("入住记录不存在");
+        }
+        
+        if (!record.getGuestId().equals(guestId)) {
+            throw new RuntimeException("只能评价自己的入住记录");
+        }
+        
+        // 2. 检查是否已退房
+        if (record.getActualCheckout() == null) {
+            throw new RuntimeException("只能评价已完成的入住记录");
+        }
+        
+        // 3. 检查是否已经评价过
+        LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Review::getRecordId, request.getRecordId())
+               .eq(Review::getGuestId, guestId);
+        Review existingReview = reviewMapper.selectOne(wrapper);
+        
+        if (existingReview != null) {
+            throw new RuntimeException("已经评价过该入住记录");
+        }
+        
+        // 4. 创建评价
+        Review review = new Review();
+        review.setRecordId(request.getRecordId());
+        review.setGuestId(guestId);
+        review.setScore(request.getScore());
+        review.setComment(request.getComment());
+        review.setReviewTime(LocalDateTime.now());
+        review.setFollowUpStatus("NONE");
+        
+        reviewMapper.insert(review);
+        
+        log.info("用户 {} 对入住记录 {} 进行了评价，评分：{}", guestId, request.getRecordId(), request.getScore());
+    }
+
+    /**
+     * 获取房间的评价列表
+     */
+    public Page<Review> getRoomReviews(Long roomId, Integer pageNum, Integer pageSize) {
+        Page<Review> page = new Page<>(pageNum, pageSize);
+        
+        // 查询该房间的所有已完成入住记录
+        LambdaQueryWrapper<CheckInRecord> recordWrapper = new LambdaQueryWrapper<>();
+        recordWrapper.eq(CheckInRecord::getRoomId, roomId)
+                    .isNotNull(CheckInRecord::getActualCheckout);
+        List<CheckInRecord> records = checkInRecordMapper.selectList(recordWrapper);
+        
+        if (records.isEmpty()) {
+            return page; // 没有入住记录，返回空
+        }
+        
+        // 提取所有记录ID
+        List<Long> recordIds = records.stream()
+                .map(CheckInRecord::getRecordId)
+                .collect(Collectors.toList());
+        
+        // 查询这些记录的评价
+        LambdaQueryWrapper<Review> reviewWrapper = new LambdaQueryWrapper<>();
+        reviewWrapper.in(Review::getRecordId, recordIds)
+                    .orderByDesc(Review::getReviewTime);
+        
+        Page<Review> resultPage = reviewMapper.selectPage(page, reviewWrapper);
+        
+        // 填充关联数据
+        for (Review review : resultPage.getRecords()) {
+            // 填充评价人信息
+            Guest guest = guestMapper.selectById(review.getGuestId());
+            if (guest != null) {
+                User user = userMapper.selectById(guest.getUserId());
+                if (user != null) {
+                    // 脱敏处理用户名
+                    String username = user.getUsername();
+                    if (username.length() > 3) {
+                        review.setGuestName(username.substring(0, 3) + "***");
+                    } else {
+                        review.setGuestName(username.charAt(0) + "**");
+                    }
+                }
+            }
+            
+            // 填充入住时间信息
+            CheckInRecord record = checkInRecordMapper.selectById(review.getRecordId());
+            if (record != null) {
+                review.setCheckinTime(record.getActualCheckin());
+                review.setCheckoutTime(record.getActualCheckout());
+                
+                Room room = roomMapper.selectById(record.getRoomId());
+                if (room != null) {
+                    review.setRoomNo(room.getRoomNo());
+                }
+            }
+        }
+        
+        return resultPage;
+    }
+
+    /**
+     * 获取房间的平均评分
+     */
+    public Double getAverageScoreByRoom(Long roomId) {
+        // 查询该房间的所有已完成入住记录
+        LambdaQueryWrapper<CheckInRecord> recordWrapper = new LambdaQueryWrapper<>();
+        recordWrapper.eq(CheckInRecord::getRoomId, roomId)
+                    .isNotNull(CheckInRecord::getActualCheckout);
+        List<CheckInRecord> records = checkInRecordMapper.selectList(recordWrapper);
+        
+        if (records.isEmpty()) {
+            return null;
+        }
+        
+        List<Long> recordIds = records.stream()
+                .map(CheckInRecord::getRecordId)
+                .collect(Collectors.toList());
+        
+        LambdaQueryWrapper<Review> reviewWrapper = new LambdaQueryWrapper<>();
+        reviewWrapper.in(Review::getRecordId, recordIds);
+        List<Review> reviews = reviewMapper.selectList(reviewWrapper);
+        
+        if (reviews.isEmpty()) {
+            return null;
+        }
+        
+        return reviews.stream()
+                .mapToInt(Review::getScore)
+                .average()
+                .orElse(0.0);
     }
 }

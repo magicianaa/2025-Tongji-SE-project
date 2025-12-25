@@ -52,9 +52,9 @@
               <el-icon><Monitor /></el-icon>
               <span>硬件监控</span>
             </el-menu-item>
-            <el-menu-item index="/staff/products">
-              <el-icon><ShoppingCart /></el-icon>
-              <span>商品管理</span>
+            <el-menu-item index="/staff/cleaning">
+              <el-icon><Brush /></el-icon>
+              <span>清扫管理</span>
             </el-menu-item>
             <el-menu-item index="/staff/pos-orders">
               <el-icon><List /></el-icon>
@@ -93,7 +93,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { Monitor, User, HomeFilled, House, ShoppingCart, Tools, List, ArrowDown, ShoppingBag } from '@element-plus/icons-vue'
+import { Monitor, User, HomeFilled, House, Brush, Tools, List, ArrowDown, ShoppingBag } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

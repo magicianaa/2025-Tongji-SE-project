@@ -48,6 +48,26 @@ public class FinancialReportDTO {
     private BigDecimal totalRevenue;
 
     /**
+     * 进货支出
+     */
+    private BigDecimal procurementCost;
+
+    /**
+     * 维修成本
+     */
+    private BigDecimal maintenanceCost;
+
+    /**
+     * 总支出
+     */
+    private BigDecimal totalExpense;
+
+    /**
+     * 净利润（总收入-总支出）
+     */
+    private BigDecimal netProfit;
+
+    /**
      * 入住订单数
      */
     private Integer checkInCount;

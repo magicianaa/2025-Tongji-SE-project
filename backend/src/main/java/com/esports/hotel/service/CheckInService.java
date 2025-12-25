@@ -299,7 +299,19 @@ public class CheckInService {
             record.setActualCheckin(now);
             record.setExpectedCheckout(expectedCheckout);
             record.setIsGamingAuthActive(true); // 启用游戏权限
-            record.setPaymentStatus("UNPAID"); // 待支付
+            
+            // 如果是通过预订入住，且订金已支付，则无需再支付房费
+            if (activeBooking != null && "PAID".equals(activeBooking.getDepositPaymentStatus())) {
+                record.setPaymentStatus("PAID"); // 已支付（通过预订订金）
+                record.setPaymentMethod(activeBooking.getDepositPaymentMethod()); // 使用预订时的支付方式
+                record.setRoomFee(activeBooking.getDepositAmount()); // 房费即为订金金额
+                log.info("预订订金已支付，入住时无需再支付房费: bookingId={}, amount={}", 
+                        activeBooking.getBookingId(), activeBooking.getDepositAmount());
+            } else {
+                record.setPaymentStatus("UNPAID"); // 待支付
+                log.info("无预订或订金未支付，入住时需支付房费");
+            }
+            
             checkInRecordMapper.insert(record);
 
             // 5.5 第一个住客生成房间权限Token

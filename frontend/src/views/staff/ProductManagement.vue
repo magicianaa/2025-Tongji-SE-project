@@ -12,9 +12,11 @@
       <el-form :inline="true" class="search-form">
         <el-form-item label="商品类型">
           <el-select v-model="searchForm.productType" clearable placeholder="全部">
+            <el-option label="全部" value="" />
             <el-option label="零食" value="SNACK" />
             <el-option label="饮料" value="BEVERAGE" />
             <el-option label="外设" value="PERIPHERAL" />
+            <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
         <el-form-item label="关键词">
@@ -34,6 +36,7 @@
             <el-tag v-if="row.productType === 'SNACK'" type="warning">零食</el-tag>
             <el-tag v-else-if="row.productType === 'BEVERAGE'" type="success">饮料</el-tag>
             <el-tag v-else-if="row.productType === 'PERIPHERAL'" type="info">外设</el-tag>
+            <el-tag v-else-if="row.productType === 'OTHER'" type="">其他</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="category" label="分类" width="120" />
@@ -312,6 +315,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.product-management {
+  padding: 20px;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

@@ -72,4 +72,19 @@ public class Booking implements Serializable {
      * 联系电话（用于入住验证）
      */
     private String contactPhone;
+    
+    /**
+     * 订金支付状态：UNPAID(未支付), PAID(已支付), REFUNDED(已退款)
+     */
+    private String depositPaymentStatus;
+    
+    /**
+     * 订金支付方式：CASH, WECHAT, ALIPAY, CARD
+     */
+    private String depositPaymentMethod;
+    
+    /**
+     * 订金支付时间
+     */
+    private LocalDateTime depositPaymentTime;
 }

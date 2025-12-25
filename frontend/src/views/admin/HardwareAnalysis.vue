@@ -140,6 +140,26 @@
         <el-empty v-else description="当前所有设备运行状况良好，暂无采购需求" />
       </el-card>
 
+      <!-- ECharts图表展示 -->
+      <el-row :gutter="20" style="margin-top: 20px">
+        <el-col :span="12">
+          <el-card>
+            <template #header>
+              <span>设备故障次数统计</span>
+            </template>
+            <div ref="failureChartRef" style="width: 100%; height: 400px"></div>
+          </el-card>
+        </el-col>
+        <el-col :span="12">
+          <el-card>
+            <template #header>
+              <span>设备故障率分布</span>
+            </template>
+            <div ref="rateChartRef" style="width: 100%; height: 400px"></div>
+          </el-card>
+        </el-col>
+      </el-row>
+
       <!-- 详细损耗统计 -->
       <el-card style="margin-top: 20px">
         <template #header>
@@ -194,13 +214,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { Search, Tools, Monitor, ShoppingCart } from '@element-plus/icons-vue'
 import { getHardwareAnalysis } from '@/api/report'
 import { ElMessage } from 'element-plus'
+import * as echarts from 'echarts'
 
 const loading = ref(false)
 const analysisData = ref(null)
+const failureChartRef = ref(null)
+const rateChartRef = ref(null)
+let failureChart = null
+let rateChart = null
 
 const queryForm = ref({
   days: 30
@@ -212,12 +237,107 @@ const loadAnalysis = async () => {
   try {
     const data = await getHardwareAnalysis(queryForm.value.days)
     analysisData.value = data
+    
+    // 等待DOM更新后渲染图表
+    await nextTick()
+    renderCharts()
+    
     ElMessage.success('分析完成')
   } catch (error) {
     console.error('硬件分析失败:', error)
     ElMessage.error('硬件分析失败：' + (error.message || '请检查网络连接'))
   } finally {
     loading.value = false
+  }
+}
+
+// 渲染ECharts图表
+const renderCharts = () => {
+  if (!analysisData.value || !analysisData.value.analysisItems) return
+  
+  const items = analysisData.value.analysisItems.slice(0, 10) // 取前10个设备
+  
+  // 渲染故障次数柱状图
+  if (failureChartRef.value) {
+    if (failureChart) {
+      failureChart.dispose()
+    }
+    failureChart = echarts.init(failureChartRef.value)
+    
+    const failureOption = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: items.map(item => item.deviceType),
+        axisLabel: {
+          interval: 0,
+          rotate: 30
+        }
+      },
+      yAxis: {
+        type: 'value',
+        name: '故障次数'
+      },
+      series: [
+        {
+          name: '故障次数',
+          type: 'bar',
+          data: items.map(item => item.failureCount),
+          itemStyle: {
+            color: function(params) {
+              const colors = ['#f56c6c', '#e6a23c', '#67c23a']
+              if (params.value >= 5) return colors[0]
+              if (params.value >= 3) return colors[1]
+              return colors[2]
+            }
+          }
+        }
+      ]
+    }
+    failureChart.setOption(failureOption)
+  }
+  
+  // 渲染故障率饼图
+  if (rateChartRef.value) {
+    if (rateChart) {
+      rateChart.dispose()
+    }
+    rateChart = echarts.init(rateChartRef.value)
+    
+    const rateOption = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c}% ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left'
+      },
+      series: [
+        {
+          name: '设备故障率',
+          type: 'pie',
+          radius: '60%',
+          data: items.map(item => ({
+            value: (item.failureRate * 100).toFixed(2),
+            name: item.deviceType
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    }
+    rateChart.setOption(rateOption)
   }
 }
 

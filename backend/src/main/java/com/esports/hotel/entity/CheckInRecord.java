@@ -86,4 +86,30 @@ public class CheckInRecord implements Serializable {
      * 备注（如换房记录）
      */
     private String notes;
+
+    // ========== 以下字段不存储在数据库，仅用于返回给前端 ==========
+
+    /**
+     * 房间号（临时字段）
+     */
+    @TableField(exist = false)
+    private String roomNo;
+
+    /**
+     * 房间类型（临时字段）
+     */
+    @TableField(exist = false)
+    private String roomType;
+
+    /**
+     * 是否已评价（临时字段）
+     */
+    @TableField(exist = false)
+    private Boolean hasReviewed;
+
+    /**
+     * 评价信息（临时字段）
+     */
+    @TableField(exist = false)
+    private Review review;
 }

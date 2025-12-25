@@ -79,11 +79,45 @@ database/*_test.sql
 *.pdf~
 SRS草稿*.md
 
-# 开发过程中的临时报告和指南（可选保留）
-# *_FIX.md
-# *_REPORT.md
-# *_GUIDE.md
-# *_TEST_GUIDE.md
+# AI 生成的文档和代码说明
+*_AI_GENERATED.md
+*_GENERATED.md
+*_AUTO_GENERATED.md
+ai_generated_*.md
+code_generation_*.md
+generation_log_*.md
+
+# 开发过程中的临时报告和指南
+*_FIX.md
+*_REPORT.md
+*_GUIDE.md
+*_TEST_GUIDE.md
+*_IMPLEMENTATION.md
+*_NOTES.md
+*_SUMMARY.md
+*_CHANGES.md
+*_UPDATES_TEMP.md
+
+# 验收和测试文档（开发过程中生成）
+Phase*_Verification.md
+Phase*_Test_Document.md
+Phase*_API_Test*.md
+Phase*_Review_System*.md
+Phase*_Report_System*.md
+RECRUITMENT_SIMPLIFICATION.md
+HOUSEKEEPING_SUPPLIES_FEATURE.md
+DEPOSIT_PAYMENT_FEATURE.md
+WebSocket测试指南.md
+
+# 部署和实施文档草稿
+DEPLOYMENT_DRAFT.md
+DOCKER_TEMP.md
+SETUP_TEMP.md
+
+# 临时更新日志
+UPDATES_*.md
+updates_draft_*.md
+changelog_temp_*.md
 
 # ===== 敏感信息和配置 =====
 # 环境变量和密钥
@@ -302,36 +336,21 @@ hardware_reports/
 .report-cache/
 report_temp/
 
-# ===== 开发文档和指南（避免上传到仓库） =====
-# Phase 阶段性文档
-Phase*.md
-Phase*_*.md
+# ===== 可选保留的文档（取消注释以忽略） =====
+# 如果需要保留某些文档，可以用 ! 符号强制包含
+# 例如：!README.md
 
-# WebSocket 相关文档
-WEBSOCKET_*.md
-WebSocket*.md
+# 生成的 API 文档
+api_docs_generated/
+swagger-output/
+openapi_generated.json
+openapi_generated.yml
 
-# 各类指南文档
-*_GUIDE.md
-*_GUIDE*.md
-DEPLOYMENT_GUIDE.md
-QUICK_START.md
+# 自动生成的组件文档
+components_doc_*.md
+api_reference_auto.md
 
-# 部署和启动脚本
-deploy.sh
-deploy*.sh
-start*.sh
-stop*.sh
-restart*.sh
-rebuild*.sh
-rebuild*.ps1
-
-# Nginx 配置示例
-nginx.conf.example
-nginx*.conf.example
-
-# Docker 相关文档（保留主要的 DOCKER.md）
-# DOCKER_*.md
-
-# 招聘简化文档
-RECRUITMENT_SIMPLIFICATION.md
+# 开发过程文档归档
+dev_docs_archive/
+temp_docs/
+scratch_notes/

@@ -68,8 +68,26 @@ const routes = [
           title: '评价管理',
           requiresAuth: true,
           roles: ['ADMIN']
+        }      },
+      {
+        path: 'products',
+        name: 'AdminProductManagement',
+        component: () => import('@/views/staff/ProductManagement.vue'),
+        meta: { 
+          title: '商品管理',
+          requiresAuth: true,
+          roles: ['ADMIN']
         }
-      }
+      },
+      {
+        path: 'procurement',
+        name: 'AdminProcurementManagement',
+        component: () => import('@/views/admin/ProcurementManagement.vue'),
+        meta: { 
+          title: '进货管理',
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }      }
     ]
   },
 
@@ -121,11 +139,11 @@ const routes = [
         }
       },
       {
-        path: 'products',
-        name: 'StaffProductManagement',
-        component: () => import('@/views/staff/ProductManagement.vue'),
+        path: 'cleaning',
+        name: 'StaffCleaningManagement',
+        component: () => import('@/views/staff/CleaningManagement.vue'),
         meta: { 
-          title: '商品管理',
+          title: '清扫管理',
           requiresAuth: true,
           roles: ['STAFF']
         }
@@ -296,6 +314,26 @@ const routes = [
         component: () => import('@/views/guest/ReviewSubmit.vue'),
         meta: { 
           title: '提交评价',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'checkin-history',
+        name: 'GuestCheckinHistory',
+        component: () => import('@/views/guest/MyCheckinHistory.vue'),
+        meta: { 
+          title: '我的入住记录',
+          requiresAuth: true,
+          roles: ['GUEST']
+        }
+      },
+      {
+        path: 'all-reviews',
+        name: 'GuestAllReviews',
+        component: () => import('@/views/guest/AllReviews.vue'),
+        meta: { 
+          title: '所有评价',
           requiresAuth: true,
           roles: ['GUEST']
         }

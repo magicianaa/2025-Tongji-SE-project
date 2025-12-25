@@ -55,6 +55,14 @@
               <el-icon><Calendar /></el-icon>
               <span>预订房间</span>
             </el-menu-item>
+            <el-menu-item index="/guest/all-reviews">
+              <el-icon><ChatLineRound /></el-icon>
+              <span>所有评价</span>
+            </el-menu-item>
+            <el-menu-item index="/guest/checkin-history">
+              <el-icon><Tickets /></el-icon>
+              <span>入住记录</span>
+            </el-menu-item>
             
             <!-- 入住后功能（需要二次鉴权） -->
             <el-divider v-if="userStore.roomAuthToken" border-style="dashed">房客服务</el-divider>
@@ -105,7 +113,7 @@ import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { 
   Cpu, User, HomeFilled, Calendar, ShoppingCart, 
-  ChatDotRound, Trophy, Tools, Money, ArrowDown, ShoppingBag 
+  ChatDotRound, ChatLineRound, Trophy, Tools, Money, ArrowDown, ShoppingBag, Tickets 
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

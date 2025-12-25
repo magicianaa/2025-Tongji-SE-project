@@ -32,6 +32,7 @@ public class ReportServiceImpl implements ReportService {
     private final AlertLogMapper alertLogMapper;
     private final GuestMapper guestMapper;
     private final PointsRedemptionMapper pointsRedemptionMapper;
+    private final ProcurementMapper procurementMapper;
 
     @Override
     public DashboardStatsDTO getDashboardStats() {
@@ -209,7 +210,40 @@ public class ReportServiceImpl implements ReportService {
         // 4. 总收入
         report.setTotalRevenue(roomRevenue.add(posRevenue).add(pointsRevenue));
 
-        // 5. 入住率和RevPAR
+        // 5. 进货支出
+        List<Procurement> dailyProcurements = procurementMapper.selectList(
+                new LambdaQueryWrapper<Procurement>()
+                        .ge(Procurement::getProcurementTime, dayStart)
+                        .lt(Procurement::getProcurementTime, dayEnd)
+        );
+
+        BigDecimal procurementCost = dailyProcurements.stream()
+                .map(Procurement::getTotalCost)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        report.setProcurementCost(procurementCost);
+
+        // 6. 维修成本
+        List<MaintenanceTicket> dailyMaintenanceTickets = maintenanceTicketMapper.selectList(
+                new LambdaQueryWrapper<MaintenanceTicket>()
+                        .ge(MaintenanceTicket::getResolveTime, dayStart)
+                        .lt(MaintenanceTicket::getResolveTime, dayEnd)
+                        .in(MaintenanceTicket::getStatus, "RESOLVED", "CLOSED")
+        );
+
+        BigDecimal maintenanceCost = dailyMaintenanceTickets.stream()
+                .map(MaintenanceTicket::getCost)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        report.setMaintenanceCost(maintenanceCost);
+
+        // 7. 总支出
+        report.setTotalExpense(procurementCost.add(maintenanceCost));
+
+        // 8. 净利润
+        report.setNetProfit(report.getTotalRevenue().subtract(report.getTotalExpense()));
+
+        // 9. 入住率和RevPAR
         Long totalRooms = roomMapper.selectCount(null);
         Long occupiedRooms = roomMapper.selectCount(
                 new LambdaQueryWrapper<Room>().eq(Room::getStatus, "OCCUPIED")
@@ -299,7 +333,40 @@ public class ReportServiceImpl implements ReportService {
         // 4. 总收入
         report.setTotalRevenue(roomRevenue.add(posRevenue).add(pointsRevenue));
 
-        // 5. 平均入住率和RevPAR
+        // 5. 进货支出
+        List<Procurement> monthlyProcurements = procurementMapper.selectList(
+                new LambdaQueryWrapper<Procurement>()
+                        .ge(Procurement::getProcurementTime, monthStart)
+                        .lt(Procurement::getProcurementTime, monthEnd)
+        );
+
+        BigDecimal procurementCost = monthlyProcurements.stream()
+                .map(Procurement::getTotalCost)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        report.setProcurementCost(procurementCost);
+
+        // 6. 维修成本
+        List<MaintenanceTicket> monthlyMaintenanceTickets = maintenanceTicketMapper.selectList(
+                new LambdaQueryWrapper<MaintenanceTicket>()
+                        .ge(MaintenanceTicket::getResolveTime, monthStart)
+                        .lt(MaintenanceTicket::getResolveTime, monthEnd)
+                        .in(MaintenanceTicket::getStatus, "RESOLVED", "CLOSED")
+        );
+
+        BigDecimal maintenanceCost = monthlyMaintenanceTickets.stream()
+                .map(MaintenanceTicket::getCost)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        report.setMaintenanceCost(maintenanceCost);
+
+        // 7. 总支出
+        report.setTotalExpense(procurementCost.add(maintenanceCost));
+
+        // 8. 净利润
+        report.setNetProfit(report.getTotalRevenue().subtract(report.getTotalExpense()));
+
+        // 9. 平均入住率和RevPAR
         Long totalRooms = roomMapper.selectCount(null);
         if (totalRooms > 0) {
             // 计算月平均入住率（简化版：使用当前入住率）

@@ -1,13 +1,19 @@
 package com.esports.hotel.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.esports.hotel.annotation.RoomAuthRequired;
 import com.esports.hotel.common.Result;
+import com.esports.hotel.dto.CreateReviewRequest;
 import com.esports.hotel.dto.FollowUpRequest;
 import com.esports.hotel.dto.ReviewResponse;
 import com.esports.hotel.dto.ReviewSubmitRequest;
+import com.esports.hotel.entity.CheckInRecord;
+import com.esports.hotel.entity.Guest;
 import com.esports.hotel.entity.Review;
+import com.esports.hotel.mapper.GuestMapper;
 import com.esports.hotel.service.ReviewService;
+import com.esports.hotel.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,11 +33,76 @@ import java.util.List;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final JwtUtil jwtUtil;
+    private final GuestMapper guestMapper;
 
     // ==================== 住客端 ====================
 
     /**
-     * 提交评价
+     * 获取我的入住记录
+     */
+    @Operation(summary = "获取我的入住记录", description = "查询当前用户的所有入住记录，用于评价")
+    @GetMapping("/my-checkin-history")
+    public Result<Page<CheckInRecord>> getMyCheckinHistory(
+            @RequestHeader("Authorization") String authHeader,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize) {
+        // 从token获取userId，然后查询guestId
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        Guest guest = guestMapper.selectOne(new LambdaQueryWrapper<Guest>().eq(Guest::getUserId, userId));
+        if (guest == null) {
+            return Result.fail(404, "用户信息不存在");
+        }
+        Page<CheckInRecord> records = reviewService.getMyCheckinHistory(guest.getGuestId(), pageNum, pageSize);
+        return Result.success(records);
+    }
+
+    /**
+     * 创建评价（新接口）
+     */
+    @Operation(summary = "创建评价", description = "用户对已完成的入住记录进行评价")
+    @PostMapping("/create")
+    public Result<Void> createReview(
+            @RequestHeader("Authorization") String authHeader,
+            @Valid @RequestBody CreateReviewRequest request) {
+        // 从token获取userId，然后查询guestId
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        Guest guest = guestMapper.selectOne(new LambdaQueryWrapper<Guest>().eq(Guest::getUserId, userId));
+        if (guest == null) {
+            return Result.fail(404, "用户信息不存在");
+        }
+        reviewService.createReview(request, guest.getGuestId());
+        return Result.success(null, "评价提交成功，感谢您的宝贵意见！");
+    }
+
+    /**
+     * 获取房间的评价列表
+     */
+    @Operation(summary = "获取房间评价", description = "查询指定房间的所有评价（供用户查看）")
+    @GetMapping("/room/{roomId}")
+    public Result<Page<Review>> getRoomReviews(
+            @Parameter(description = "房间ID") @PathVariable Long roomId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize) {
+        Page<Review> reviews = reviewService.getRoomReviews(roomId, pageNum, pageSize);
+        return Result.success(reviews);
+    }
+
+    /**
+     * 获取房间平均评分
+     */
+    @Operation(summary = "获取房间平均评分", description = "查询指定房间的平均评分")
+    @GetMapping("/room/{roomId}/average-score")
+    public Result<Double> getAverageScore(
+            @Parameter(description = "房间ID") @PathVariable Long roomId) {
+        Double avgScore = reviewService.getAverageScoreByRoom(roomId);
+        return Result.success(avgScore);
+    }
+
+    /**
+     * 提交评价（原有接口，保留兼容性）
      * 需要客房权限验证
      */
     @Operation(summary = "提交评价", description = "住客退房后提交评价")

@@ -132,14 +132,7 @@
             <el-radio value="CARD">银行卡</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="支付后">
-          <el-checkbox v-model="settleForm.shouldReview">
-            <span style="display: flex; align-items: center;">
-              <el-icon style="margin-right: 4px;"><Star /></el-icon>
-              立即评价此次入住体验
-            </span>
-          </el-checkbox>
-        </el-form-item>
+
       </el-form>
       <template #footer>
         <el-button @click="showSettleDialog = false">取消</el-button>
@@ -151,9 +144,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Star } from '@element-plus/icons-vue'
 import { getBillDetail, settleBill } from '@/api/billing'
 import { useUserStore } from '@/stores/user'
 
@@ -166,8 +157,7 @@ const showSettleDialog = ref(false)
 const settling = ref(false)
 
 const settleForm = ref({
-  paymentMethod: 'WECHAT',
-  shouldReview: false
+  paymentMethod: 'WECHAT'
 })
 
 // 加载账单
@@ -195,16 +185,7 @@ const handleSettle = async () => {
     await settleBill(userStore.checkInInfo.recordId, settleForm.value.paymentMethod)
     ElMessage.success('支付成功')
     showSettleDialog.value = false
-    
-    // 如果勾选了立即评价，则跳转到评价页面
-    if (settleForm.value.shouldReview) {
-      goToReview()
-    } else {
-      loadBill() // 否则刷新账单
-    }
-    
-    // 重置表单
-    settleForm.value.shouldReview = false
+    loadBill() // 刷新账单
   } catch (error) {
     ElMessage.error('支付失败')
   } finally {
@@ -230,19 +211,6 @@ const formatTime = (time) => {
 // 合计行
 const getSummaries = () => {
   return ['', '', '', '合计']
-}
-
-// 跳转到评价页面
-const goToReview = () => {
-  const recordId = userStore.checkInInfo?.recordId
-  if (recordId) {
-    router.push({
-      path: '/guest/review/submit',
-      query: { recordId }
-    })
-  } else {
-    ElMessage.warning('未找到入住记录')
-  }
 }
 
 onMounted(() => {

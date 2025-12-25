@@ -79,8 +79,29 @@ public class BookingService {
         if (request.getPlannedCheckout().isBefore(request.getPlannedCheckin())) {
             throw new BusinessException("退房时间不能早于入住时间");
         }
+        
+        // 计算入住天数
+        long days = java.time.Duration.between(
+                request.getPlannedCheckin().atStartOfDay(),
+                request.getPlannedCheckout().atStartOfDay()
+        ).toDays();
+        
+        if (days < 1) {
+            days = 1; // 最少一天
+        }
+        
+        // 6. 计算房费（天数×单价×会员折扣）
+        BigDecimal totalRoomFee = room.getPricePerDay()
+                .multiply(BigDecimal.valueOf(days));
+        
+        // 根据会员等级计算折扣率
+        BigDecimal discountRate = getMemberDiscountRate(guest.getMemberLevel());
+        BigDecimal depositAmount = totalRoomFee.multiply(discountRate).setScale(2, BigDecimal.ROUND_HALF_UP);
+        
+        log.info("预订房费计算: 房间单价={}, 入住天数={}, 会员等级={}, 折扣率={}, 应付房费={}", 
+                room.getPricePerDay(), days, guest.getMemberLevel(), discountRate, depositAmount);
 
-        // 6. 检查房间在该时段是否可预订
+        // 7. 检查房间在该时段是否可预订
         LocalDateTime checkinDateTime = request.getPlannedCheckin().atStartOfDay();
         LocalDateTime checkoutDateTime = request.getPlannedCheckout().atStartOfDay();
         
@@ -102,28 +123,29 @@ public class BookingService {
             throw new BusinessException("该时段房间已被预订");
         }
 
-        // 7. 创建预订记录（在insert前设置所有字段）
+        // 8. 创建预订记录（状态为PENDING，待支付订金）
         Booking booking = new Booking();
         booking.setGuestId(guest.getGuestId());
         booking.setRoomId(request.getRoomId());
         // 将LocalDate转换为LocalDateTime（设置为当天00:00:00）
         booking.setPlannedCheckin(request.getPlannedCheckin().atStartOfDay());
         booking.setPlannedCheckout(request.getPlannedCheckout().atStartOfDay());
-        booking.setStatus("CONFIRMED");
-        booking.setDepositAmount(BigDecimal.ZERO); // 押金暂时为0
-        booking.setDiscountRate(BigDecimal.valueOf(1.00));
+        booking.setStatus("PENDING"); // 预订状态为PENDING，待支付
+        booking.setDepositAmount(depositAmount); // 设置预付房费
+        booking.setDiscountRate(discountRate); // 设置折扣率
         booking.setSpecialRequests(request.getSpecialRequests());
         booking.setBookingTime(LocalDateTime.now());
         // 设置主住客信息（用于入住验证）
         booking.setMainGuestName(request.getMainGuestName());
         booking.setContactPhone(request.getContactPhone());
+        booking.setDepositPaymentStatus("UNPAID"); // 初始状态为未支付
         bookingMapper.insert(booking);
 
-        log.info("预订创建成功: bookingId={}, guestId={}, roomId={}, mainGuestName={}, contactPhone={}", 
+        log.info("预订创建成功（待支付）: bookingId={}, guestId={}, roomId={}, mainGuestName={}, contactPhone={}, depositAmount={}", 
                 booking.getBookingId(), guest.getGuestId(), request.getRoomId(), 
-                request.getMainGuestName(), request.getContactPhone());
+                request.getMainGuestName(), request.getContactPhone(), depositAmount);
 
-        // 8. 构造响应
+        // 9. 构造响应
         BookingResponse response = new BookingResponse();
         response.setBookingId(booking.getBookingId());
         response.setRoomNo(room.getRoomNo());
@@ -137,8 +159,24 @@ public class BookingService {
         response.setStatus(booking.getStatus());
         response.setDepositAmount(booking.getDepositAmount());
         response.setSpecialRequests(booking.getSpecialRequests());
+        response.setDepositPaymentStatus(booking.getDepositPaymentStatus());
+        response.setDepositPaymentMethod(booking.getDepositPaymentMethod());
+        response.setDepositPaymentTime(booking.getDepositPaymentTime());
 
         return response;
+    }
+    
+    /**
+     * 根据会员等级获取折扣率
+     */
+    private BigDecimal getMemberDiscountRate(String memberLevel) {
+        return switch (memberLevel) {
+            case "BRONZE" -> BigDecimal.valueOf(0.95);    // 95折
+            case "SILVER" -> BigDecimal.valueOf(0.90);    // 90折
+            case "GOLD" -> BigDecimal.valueOf(0.85);      // 85折
+            case "PLATINUM" -> BigDecimal.valueOf(0.80);  // 80折
+            default -> BigDecimal.valueOf(1.00);          // 无折扣
+        };
     }
 
     /**
@@ -179,6 +217,9 @@ public class BookingService {
             response.setStatus(booking.getStatus());
             response.setDepositAmount(booking.getDepositAmount());
             response.setSpecialRequests(booking.getSpecialRequests());
+            response.setDepositPaymentStatus(booking.getDepositPaymentStatus());
+            response.setDepositPaymentMethod(booking.getDepositPaymentMethod());
+            response.setDepositPaymentTime(booking.getDepositPaymentTime());
             return response;
         }).collect(Collectors.toList());
     }
@@ -211,12 +252,21 @@ public class BookingService {
         if ("CANCELLED".equals(booking.getStatus())) {
             throw new BusinessException("预订已取消");
         }
+        
+        // 4. 验证时间：入住日期当天及之后不可退订
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime checkinDate = booking.getPlannedCheckin().toLocalDate().atStartOfDay();
+        
+        if (!now.isBefore(checkinDate)) {
+            throw new BusinessException("已到入住日期，无法退订。如需取消，请联系前台处理");
+        }
 
-        // 4. 更新状态
+        // 5. 更新状态（入住日期前取消，可全额退款）
         booking.setStatus("CANCELLED");
         bookingMapper.updateById(booking);
 
-        log.info("预订已取消: bookingId={}, guestId={}", bookingId, guest.getGuestId());
+        log.info("预订已取消: bookingId={}, guestId={}, 可全额退款: {}", 
+                bookingId, guest.getGuestId(), booking.getDepositAmount());
     }
 
     /**
@@ -271,8 +321,68 @@ public class BookingService {
         response.setStatus(booking.getStatus());
         response.setDepositAmount(booking.getDepositAmount());
         response.setSpecialRequests(booking.getSpecialRequests());
+        response.setDepositPaymentStatus(booking.getDepositPaymentStatus());
+        response.setDepositPaymentMethod(booking.getDepositPaymentMethod());
+        response.setDepositPaymentTime(booking.getDepositPaymentTime());
 
         log.info("根据手机号查询到预订: phone={}, bookingId={}, roomId={}", phone, booking.getBookingId(), booking.getRoomId());
         return response;
+    }
+
+    /**
+     * 支付订金
+     */
+    public void payDeposit(Long bookingId, String paymentMethod) {
+        // 1. 查询预订
+        Booking booking = bookingMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new BusinessException("预订不存在");
+        }
+
+        // 2. 验证支付状态
+        if (!"UNPAID".equals(booking.getDepositPaymentStatus())) {
+            throw new BusinessException("订金已支付或已退款，无法重复支付");
+        }
+
+        // 3. 更新支付信息
+        booking.setDepositPaymentStatus("PAID");
+        booking.setDepositPaymentMethod(paymentMethod);
+        booking.setDepositPaymentTime(LocalDateTime.now());
+        booking.setStatus("CONFIRMED"); // 支付后状态变为已确认
+        bookingMapper.updateById(booking);
+
+        log.info("订金支付成功: bookingId={}, amount={}, method={}", 
+                bookingId, booking.getDepositAmount(), paymentMethod);
+    }
+
+    /**
+     * 退订金
+     */
+    public void refundDeposit(Long bookingId) {
+        // 1. 查询预订
+        Booking booking = bookingMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new BusinessException("预订不存在");
+        }
+
+        // 2. 验证支付状态
+        if (!"PAID".equals(booking.getDepositPaymentStatus())) {
+            throw new BusinessException("订金未支付或已退款");
+        }
+
+        // 3. 验证时间：入住日期当天及之后不可退订
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime checkinDate = booking.getPlannedCheckin().toLocalDate().atStartOfDay();
+        
+        if (!now.isBefore(checkinDate)) {
+            throw new BusinessException("已到入住日期，无法退订");
+        }
+
+        // 4. 更新退款状态
+        booking.setDepositPaymentStatus("REFUNDED");
+        booking.setStatus("CANCELLED");
+        bookingMapper.updateById(booking);
+
+        log.info("订金退款成功: bookingId={}, amount={}", bookingId, booking.getDepositAmount());
     }
 }
