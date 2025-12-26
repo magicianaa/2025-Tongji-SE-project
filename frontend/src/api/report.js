@@ -82,3 +82,19 @@ export function getPurchaseRecommendations(days = 30) {
     params: { days }
   })
 }
+
+// ==================== AI财报分析 ====================
+
+/**
+ * 生成AI财报分析
+ * @param {string} reportType - 报表类型：DAILY / MONTHLY
+ * @param {string} date - 日期，格式：yyyy-MM-dd
+ */
+export function generateAIAnalysis(reportType, date) {
+  return request({
+    url: '/reports/financial/ai-analysis',
+    method: 'get',
+    params: { reportType, date },
+    timeout: 60000 // AI生成需要较长时间，设置60秒超时
+  })
+}

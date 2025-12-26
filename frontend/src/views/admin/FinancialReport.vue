@@ -41,6 +41,10 @@
             <el-icon><Download /></el-icon>
             导出CSV
           </el-button>
+          <el-button type="warning" @click="generateAI" :loading="aiAnalysisLoading" :disabled="!reportData">
+            <el-icon><ChatDotRound /></el-icon>
+            AI生成财报分析
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -103,6 +107,10 @@
           <el-button type="success" @click="exportReport">
             <el-icon><Download /></el-icon>
             导出CSV
+          </el-button>
+          <el-button type="warning" @click="generateAI" :loading="aiAnalysisLoading" :disabled="!reportData">
+            <el-icon><ChatDotRound /></el-icon>
+            AI生成财报分析
           </el-button>
         </el-form-item>
       </el-form>
@@ -233,15 +241,29 @@
     </el-card>
 
     <el-empty v-else description="请选择日期查询报表" />
+
+    <!-- AI分析结果卡片 -->
+    <el-card v-if="showAIAnalysis && aiAnalysis" class="ai-analysis-card" style="margin-top: 20px">
+      <template #header>
+        <div class="card-header">
+          <span>💡 AI财报分析与经营建议</span>
+          <el-button size="small" @click="showAIAnalysis = false">关闭</el-button>
+        </div>
+      </template>
+      <div class="ai-analysis-content" v-html="renderedAnalysis"></div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { Search, Download } from '@element-plus/icons-vue'
-import { getDailyReport, getMonthlyReport, exportFinancialReport } from '@/api/report'
+import { Search, Download, ChatDotRound } from '@element-plus/icons-vue'
+import { getDailyReport, getMonthlyReport, exportFinancialReport, generateAIAnalysis } from '@/api/report'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import MarkdownIt from 'markdown-it'
+
+const md = new MarkdownIt()
 
 const loading = ref(false)
 const reportData = ref(null)
@@ -249,6 +271,11 @@ const revenueChartRef = ref(null)
 const orderChartRef = ref(null)
 let revenueChart = null
 let orderChart = null
+
+// AI分析相关
+const aiAnalysisLoading = ref(false)
+const aiAnalysis = ref('')
+const showAIAnalysis = ref(false)
 
 const queryForm = ref({
   reportType: 'DAILY',
@@ -415,6 +442,36 @@ const exportReport = async () => {
   }
 }
 
+// 生成AI分析
+const generateAI = async () => {
+  if (!reportData.value) {
+    ElMessage.warning('请先查询报表数据')
+    return
+  }
+
+  try {
+    aiAnalysisLoading.value = true
+    const date = queryForm.value.reportType === 'DAILY' 
+      ? queryForm.value.date 
+      : `${queryForm.value.year}-${String(queryForm.value.month).padStart(2, '0')}-01`
+
+    const response = await generateAIAnalysis(queryForm.value.reportType, date)
+    aiAnalysis.value = response
+    showAIAnalysis.value = true
+    ElMessage.success('AI财报分析生成成功')
+  } catch (error) {
+    console.error('生成AI分析失败:', error)
+    ElMessage.error('生成AI分析失败：' + (error.message || '请检查网络连接'))
+  } finally {
+    aiAnalysisLoading.value = false
+  }
+}
+
+// 将Markdown渲染为HTML
+const renderedAnalysis = computed(() => {
+  return aiAnalysis.value ? md.render(aiAnalysis.value) : ''
+})
+
 // 初始加载今日数据
 loadReport()
 </script>
@@ -491,6 +548,74 @@ loadReport()
 @media (max-width: 768px) {
   .metric-value {
     font-size: 22px;
+
+/* AI分析样式 */
+.ai-analysis-card {
+  margin-top: 20px;
+}
+
+.ai-analysis-content {
+  line-height: 1.8;
+  font-size: 15px;
+}
+
+.ai-analysis-content :deep(h1) {
+  font-size: 24px;
+  margin: 20px 0 10px;
+  color: #303133;
+  border-bottom: 2px solid #409eff;
+  padding-bottom: 10px;
+}
+
+.ai-analysis-content :deep(h2) {
+  font-size: 20px;
+  margin: 18px 0 10px;
+  color: #409eff;
+}
+
+.ai-analysis-content :deep(h3) {
+  font-size: 18px;
+  margin: 15px 0 8px;
+  color: #606266;
+}
+
+.ai-analysis-content :deep(p) {
+  margin: 10px 0;
+  color: #606266;
+}
+
+.ai-analysis-content :deep(ul), 
+.ai-analysis-content :deep(ol) {
+  margin: 10px 0;
+  padding-left: 25px;
+}
+
+.ai-analysis-content :deep(li) {
+  margin: 5px 0;
+  color: #606266;
+}
+
+.ai-analysis-content :deep(strong) {
+  color: #303133;
+  font-weight: 600;
+}
+
+.ai-analysis-content :deep(code) {
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  color: #e6a23c;
+}
+
+.ai-analysis-content :deep(blockquote) {
+  border-left: 4px solid #409eff;
+  padding-left: 15px;
+  margin: 15px 0;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 10px 15px;
+}
   }
   
   .metric-value.primary {

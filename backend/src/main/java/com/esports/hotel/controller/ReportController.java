@@ -4,6 +4,7 @@ import com.esports.hotel.common.Result;
 import com.esports.hotel.dto.DashboardStatsDTO;
 import com.esports.hotel.dto.FinancialReportDTO;
 import com.esports.hotel.dto.HardwareAnalysisDTO;
+import com.esports.hotel.service.QianWenService;
 import com.esports.hotel.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 public class ReportController {
 
     private final ReportService reportService;
+    private final QianWenService qianWenService;
 
     // ==================== FR-RPT-01 运营看板 ====================
 
@@ -135,5 +137,34 @@ public class ReportController {
         
         return Result.success(analysis.getPurchaseRecommendations(), 
                 "已生成" + analysis.getPurchaseRecommendations().size() + "项采购建议");
+    }
+
+    // ==================== AI财报分析 ====================
+
+    /**
+     * 生成AI财报分析
+     */
+    @Operation(summary = "生成AI财报分析", description = "使用千问AI生成专业的财报分析和经营建议")
+    @GetMapping("/financial/ai-analysis")
+    public Result<String> generateAIAnalysis(
+            @Parameter(description = "报表类型：DAILY(日报) / MONTHLY(月报)")
+            @RequestParam String reportType,
+            @Parameter(description = "报表日期，格式：yyyy-MM-dd")
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        
+        // 先获取财报数据
+        FinancialReportDTO report;
+        if ("DAILY".equalsIgnoreCase(reportType)) {
+            report = reportService.getDailyReport(date);
+        } else if ("MONTHLY".equalsIgnoreCase(reportType)) {
+            report = reportService.getMonthlyReport(date.getYear(), date.getMonthValue());
+        } else {
+            return Result.fail("报表类型错误，仅支持 DAILY 或 MONTHLY");
+        }
+        
+        // 调用AI生成分析
+        String analysis = qianWenService.generateFinancialAnalysis(report, reportType);
+        
+        return Result.success(analysis, "AI财报分析生成成功");
     }
 }
