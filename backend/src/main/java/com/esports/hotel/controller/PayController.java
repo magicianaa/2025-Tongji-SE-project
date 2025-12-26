@@ -39,7 +39,10 @@ public class PayController {
     @Operation(summary = "支付宝异步通知")
     @PostMapping("/notify")
     public String notifyAlipay(@RequestParam Map<String, String> params) {
+        log.info("======= 收到支付宝异步回调通知 =======");
+        log.info("回调参数: {}", params);
         boolean success = paymentService.handleAlipayNotify(new HashMap<>(params));
+        log.info("回调处理结果: {}", success ? "成功" : "失败");
         return success ? "success" : "fail";
     }
 
