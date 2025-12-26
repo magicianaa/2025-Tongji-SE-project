@@ -11,6 +11,12 @@ const routes = [
     meta: { title: '登录' }
   },
   {
+    path: '/pay/alipay/return',
+    name: 'AlipayReturn',
+    component: () => import('@/views/AlipayReturn.vue'),
+    meta: { title: '支付结果' }
+  },
+  {
     path: '/403',
     name: 'Forbidden',
     component: () => import('@/views/NotFound.vue'),
