@@ -301,6 +301,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Grid, Money, User, Check, Tools, Tickets } from '@element-plus/icons-vue'
 import { getRoomList, getRoomsByStatus, checkIn, checkOut, getCheckInRecords } from '@/api/room'
 import { getBillDetailByRoomId, settleBill } from '@/api/billing'
+import { createBillAlipay } from '@/api/payment'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -391,7 +392,7 @@ const billDetail = ref(null)
 const settlementDialogVisible = ref(false)
 const settlementLoading = ref(false)
 const settlementForm = reactive({
-  paymentMethod: 'CASH'
+  paymentMethod: 'ALIPAY'
 })
 
 const checkInRules = {
@@ -471,18 +472,36 @@ const confirmSettlement = async () => {
   
   settlementLoading.value = true
   try {
-    await settleBill(billDetail.value.recordId, settlementForm.paymentMethod)
-    ElMessage.success('结算成功')
-    settlementDialogVisible.value = false
-    billDialogVisible.value = false
-    
-    // 重新加载账单信息
-    if (billDetail.value) {
-      billDetail.value = await getBillDetailByRoomId(billDetail.value.roomId)
+    // 如果选择支付宝支付，跳转到支付宝页面
+    if (settlementForm.paymentMethod === 'ALIPAY') {
+      const payResponse = await createBillAlipay(billDetail.value.recordId)
+      
+      // 打开新窗口显示支付宝支付页面
+      const payWindow = window.open('', '_blank')
+      if (payWindow) {
+        payWindow.document.write(payResponse.data)
+        payWindow.document.close()
+        
+        ElMessage.success('支付页面已打开，请在新窗口完成支付。支付完成后请刷新账单查看状态。')
+        settlementDialogVisible.value = false
+      } else {
+        ElMessage.error('无法打开支付窗口，请检查浏览器弹窗设置')
+      }
+    } else {
+      // 其他支付方式直接调用原有接口
+      await settleBill(billDetail.value.recordId, settlementForm.paymentMethod)
+      ElMessage.success('结算成功')
+      settlementDialogVisible.value = false
+      billDialogVisible.value = false
+      
+      // 重新加载账单信息
+      if (billDetail.value) {
+        billDetail.value = await getBillDetailByRoomId(billDetail.value.roomId)
+      }
     }
   } catch (error) {
     console.error('结算失败：', error)
-    ElMessage.error('结算失败')
+    ElMessage.error('结算失败：' + (error.message || '未知错误'))
   } finally {
     settlementLoading.value = false
   }

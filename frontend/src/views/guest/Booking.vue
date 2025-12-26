@@ -211,6 +211,7 @@ import { ElMessage, ElMessageBox, ElRadioGroup, ElRadio } from 'element-plus'
 import { User, Refresh, Document } from '@element-plus/icons-vue'
 import axios from 'axios'
 import RoomReviews from '@/components/RoomReviews.vue'
+import { createDepositAlipay } from '@/api/payment'
 
 const activeTab = ref('booking')
 const bookingFormRef = ref(null)
@@ -384,7 +385,7 @@ const showPaymentDialog = async (bookingResponse) => {
     { label: '银行卡支付', value: 'CARD' }
   ]
   
-  const paymentMethod = ref('WECHAT')
+  const paymentMethod = ref('ALIPAY')
   
   try {
     await ElMessageBox({
@@ -411,29 +412,29 @@ const showPaymentDialog = async (bookingResponse) => {
         if (action === 'confirm') {
           instance.confirmButtonLoading = true
           try {
-            const payResponse = await axios.post(
-              `/api/bookings/${bookingResponse.bookingId}/pay-deposit`,
-              null,
-              {
-                params: { paymentMethod: paymentMethod.value },
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
+            if (paymentMethod.value === 'ALIPAY') {
+              // 调用支付宝支付
+              const payResponse = await createDepositAlipay(bookingResponse.bookingId)
+              
+              // 打开新窗口显示支付宝支付页面
+              const payWindow = window.open('', '_blank')
+              if (payWindow) {
+                payWindow.document.write(payResponse.data)
+                payWindow.document.close()
               }
-            )
-            
-            if (payResponse.data.code === 200) {
-              ElMessage.success('支付成功！')
+              
+              ElMessage.success('已打开支付宝支付页面，请完成支付')
               done()
+              
               // 提示查看预订
               setTimeout(() => {
                 ElMessageBox.confirm(
-                  '支付成功，是否前往查看我的预订？',
-                  '支付成功',
+                  '请在支付宝页面完成支付，支付完成后可在"我的预订"中查看状态',
+                  '支付提示',
                   {
                     confirmButtonText: '查看预订',
                     cancelButtonText: '继续预订',
-                    type: 'success'
+                    type: 'info'
                   }
                 ).then(() => {
                   activeTab.value = 'myBookings'
@@ -441,7 +442,39 @@ const showPaymentDialog = async (bookingResponse) => {
                 }).catch(() => {})
               }, 100)
             } else {
-              ElMessage.error(payResponse.data.message || '支付失败')
+              // 其他支付方式：直接调用后端接口标记已支付
+              const payResponse = await axios.post(
+                `/api/bookings/${bookingResponse.bookingId}/pay-deposit`,
+                null,
+                {
+                  params: { paymentMethod: paymentMethod.value },
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  }
+                }
+              )
+              
+              if (payResponse.data.code === 200) {
+                ElMessage.success('支付成功！')
+                done()
+                // 提示查看预订
+                setTimeout(() => {
+                  ElMessageBox.confirm(
+                    '支付成功，是否前往查看我的预订？',
+                    '支付成功',
+                    {
+                      confirmButtonText: '查看预订',
+                      cancelButtonText: '继续预订',
+                      type: 'success'
+                    }
+                  ).then(() => {
+                    activeTab.value = 'myBookings'
+                    loadMyBookings()
+                  }).catch(() => {})
+                }, 100)
+              } else {
+                ElMessage.error(payResponse.data.message || '支付失败')
+              }
             }
           } catch (error) {
             console.error('支付失败:', error)

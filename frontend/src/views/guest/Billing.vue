@@ -146,7 +146,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getBillDetail, settleBill } from '@/api/billing'
+import { createBillAlipay } from '@/api/payment'
 import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -157,7 +159,7 @@ const showSettleDialog = ref(false)
 const settling = ref(false)
 
 const settleForm = ref({
-  paymentMethod: 'WECHAT'
+  paymentMethod: 'ALIPAY'
 })
 
 // 加载账单
@@ -182,12 +184,31 @@ const loadBill = async () => {
 const handleSettle = async () => {
   try {
     settling.value = true
-    await settleBill(userStore.checkInInfo.recordId, settleForm.value.paymentMethod)
-    ElMessage.success('支付成功')
-    showSettleDialog.value = false
-    loadBill() // 刷新账单
+    
+    // 如果选择支付宝支付，跳转到支付宝页面
+    if (settleForm.value.paymentMethod === 'ALIPAY') {
+      const payResponse = await createBillAlipay(userStore.checkInInfo.recordId)
+      
+      // 打开新窗口显示支付宝支付页面
+      const payWindow = window.open('', '_blank')
+      if (payWindow) {
+        payWindow.document.write(payResponse.data)
+        payWindow.document.close()
+        
+        ElMessage.success('支付页面已打开，请在新窗口完成支付。支付完成后请刷新账单查看状态。')
+        showSettleDialog.value = false
+      } else {
+        ElMessage.error('无法打开支付窗口，请检查浏览器弹窗设置')
+      }
+    } else {
+      // 其他支付方式直接调用原有接口
+      await settleBill(userStore.checkInInfo.recordId, settleForm.value.paymentMethod)
+      ElMessage.success('支付成功')
+      showSettleDialog.value = false
+      loadBill() // 刷新账单
+    }
   } catch (error) {
-    ElMessage.error('支付失败')
+    ElMessage.error('支付失败：' + (error.message || '未知错误'))
   } finally {
     settling.value = false
   }
