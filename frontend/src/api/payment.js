@@ -1,15 +1,11 @@
-import axios from 'axios'
+import request from '@/utils/request'
 
 /**
  * 创建预订订金支付宝支付
  * @returns { outTradeNo: string, formHtml: string }
  */
 export function createDepositAlipay(bookingId) {
-  return axios.post(`/api/pay/alipay/deposit/${bookingId}`, null, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
+  return request.post(`/pay/alipay/deposit/${bookingId}`)
 }
 
 /**
@@ -17,11 +13,7 @@ export function createDepositAlipay(bookingId) {
  * @returns { outTradeNo: string, formHtml: string }
  */
 export function createBillAlipay(recordId) {
-  return axios.post(`/api/pay/alipay/bill/${recordId}`, null, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  })
+  return request.post(`/pay/alipay/bill/${recordId}`)
 }
 
 /**
@@ -29,10 +21,7 @@ export function createBillAlipay(recordId) {
  * @returns { outTradeNo: string, tradeStatus: string, success: boolean }
  */
 export function queryAlipayStatus(outTradeNo) {
-  return axios.get(`/api/pay/alipay/query`, {
-    params: { outTradeNo },
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
+  return request.get(`/pay/alipay/query`, {
+    params: { outTradeNo }
   })
 }

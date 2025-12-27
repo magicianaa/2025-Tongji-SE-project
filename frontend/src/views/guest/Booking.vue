@@ -248,7 +248,7 @@ const startPaymentPolling = (outTradeNo) => {
     
     try {
       const res = await queryAlipayStatus(currentOutTradeNo)
-      const { tradeStatus, success } = res.data
+      const { tradeStatus, success } = res
       
       if (success) {
         stopPaymentPolling()
@@ -462,7 +462,7 @@ const showPaymentDialog = async (bookingResponse) => {
             if (paymentMethod.value === 'ALIPAY') {
               // 调用支付宝支付
               const payResponse = await createDepositAlipay(bookingResponse.bookingId)
-              const { outTradeNo, formHtml } = payResponse.data
+              const { outTradeNo, formHtml } = payResponse
               
               // 打开新窗口显示支付宝支付页面
               const payWindow = window.open('', '_blank')

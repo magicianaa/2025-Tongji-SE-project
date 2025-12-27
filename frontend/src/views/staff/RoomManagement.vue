@@ -330,7 +330,7 @@ const startPaymentPolling = (outTradeNo, roomId) => {
     
     try {
       const res = await queryAlipayStatus(currentOutTradeNo)
-      const { tradeStatus, success } = res.data
+      const { tradeStatus, success } = res
       
       if (success) {
         stopPaymentPolling()
@@ -523,7 +523,7 @@ const confirmSettlement = async () => {
     // 如果选择支付宝支付，跳转到支付宝页面
     if (settlementForm.paymentMethod === 'ALIPAY') {
       const payResponse = await createBillAlipay(billDetail.value.recordId)
-      const { outTradeNo, formHtml } = payResponse.data
+      const { outTradeNo, formHtml } = payResponse
       
       // 打开新窗口显示支付宝支付页面
       const payWindow = window.open('', '_blank')

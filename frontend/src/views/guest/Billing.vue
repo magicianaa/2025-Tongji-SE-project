@@ -194,7 +194,7 @@ const handleSettle = async () => {
     // 如果选择支付宝支付，跳转到支付宝页面
     if (settleForm.value.paymentMethod === 'ALIPAY') {
       const payResponse = await createBillAlipay(userStore.checkInInfo.recordId)
-      const { outTradeNo, formHtml } = payResponse.data
+      const { outTradeNo, formHtml } = payResponse
       
       // 保存订单号用于轮询
       currentOutTradeNo.value = outTradeNo
@@ -243,7 +243,7 @@ const startPolling = () => {
     
     try {
       const res = await queryAlipayStatus(currentOutTradeNo.value)
-      const { tradeStatus, success } = res.data
+      const { tradeStatus, success } = res
       
       if (success) {
         stopPolling()
