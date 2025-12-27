@@ -69,5 +69,5 @@ alipay:
   sign-type: RSA2
   charset: UTF-8
   format: json
-  notify-url: http://120.26.18.86/api/pay/alipay/notify
-  return-url: http://120.26.18.86/pay/alipay/return
+  notify-url: http://120.26.18.86:8081/api/pay/alipay/notify
+  return-url: http://120.26.18.86:8081/pay/alipay/return
