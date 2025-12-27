@@ -5,6 +5,8 @@ import com.alipay.api.AlipayClient;
 import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.esports.hotel.config.AlipayProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +75,33 @@ public class AlipayService {
         } catch (AlipayApiException e) {
             log.error("支付宝回调验签失败", e);
             return false;
+        }
+    }
+
+    /**
+     * 查询支付宝交易状态。
+     * @param outTradeNo 商户订单号
+     * @return 交易状态：TRADE_SUCCESS-成功, WAIT_BUYER_PAY-等待付款, TRADE_CLOSED-关闭, null-查询失败
+     */
+    public String queryTradeStatus(String outTradeNo) {
+        try {
+            AlipayClient client = buildClient();
+            AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
+            String bizContent = "{\"out_trade_no\":\"" + outTradeNo + "\"}";
+            request.setBizContent(bizContent);
+            
+            AlipayTradeQueryResponse response = client.execute(request);
+            if (response.isSuccess()) {
+                log.info("支付宝交易查询成功: outTradeNo={}, tradeStatus={}", outTradeNo, response.getTradeStatus());
+                return response.getTradeStatus();
+            } else {
+                log.warn("支付宝交易查询失败: outTradeNo={}, code={}, msg={}", 
+                        outTradeNo, response.getCode(), response.getMsg());
+                return null;
+            }
+        } catch (AlipayApiException e) {
+            log.error("支付宝交易查询异常: outTradeNo={}", outTradeNo, e);
+            return null;
         }
     }
 }

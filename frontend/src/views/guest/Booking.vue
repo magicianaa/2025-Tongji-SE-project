@@ -211,7 +211,7 @@ import { ElMessage, ElMessageBox, ElRadioGroup, ElRadio } from 'element-plus'
 import { User, Refresh, Document } from '@element-plus/icons-vue'
 import axios from 'axios'
 import RoomReviews from '@/components/RoomReviews.vue'
-import { createDepositAlipay } from '@/api/payment'
+import { createDepositAlipay, queryAlipayStatus } from '@/api/payment'
 
 const activeTab = ref('booking')
 const bookingFormRef = ref(null)
@@ -224,6 +224,53 @@ const bookingForm = reactive({
 
 const myBookings = ref([])
 const loadingBookings = ref(false)
+
+// 支付轮询相关
+let pollingTimer = null
+let currentOutTradeNo = null
+let pollingCount = 0
+const MAX_POLLING_COUNT = 60  // 最多轮询60次（5分钟）
+
+// 开始轮询检测支付状态
+const startPaymentPolling = (outTradeNo) => {
+  stopPaymentPolling()
+  currentOutTradeNo = outTradeNo
+  pollingCount = 0
+  
+  pollingTimer = setInterval(async () => {
+    pollingCount++
+    
+    if (pollingCount > MAX_POLLING_COUNT) {
+      stopPaymentPolling()
+      ElMessage.warning('支付状态检测超时，请在"我的预订"中查看支付结果')
+      return
+    }
+    
+    try {
+      const res = await queryAlipayStatus(currentOutTradeNo)
+      const { tradeStatus, success } = res.data
+      
+      if (success) {
+        stopPaymentPolling()
+        ElMessage.success('订金支付成功！')
+        loadMyBookings() // 刷新预订列表
+      } else if (tradeStatus === 'TRADE_CLOSED') {
+        stopPaymentPolling()
+        ElMessage.error('交易已关闭')
+      }
+    } catch (error) {
+      console.error('轮询支付状态失败:', error)
+    }
+  }, 5000) // 每5秒查询一次
+}
+
+// 停止轮询
+const stopPaymentPolling = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
 
 const bookingRules = {
   checkInDate: [
@@ -415,31 +462,25 @@ const showPaymentDialog = async (bookingResponse) => {
             if (paymentMethod.value === 'ALIPAY') {
               // 调用支付宝支付
               const payResponse = await createDepositAlipay(bookingResponse.bookingId)
+              const { outTradeNo, formHtml } = payResponse.data
               
               // 打开新窗口显示支付宝支付页面
               const payWindow = window.open('', '_blank')
               if (payWindow) {
-                payWindow.document.write(payResponse.data)
+                payWindow.document.write(formHtml)
                 payWindow.document.close()
               }
               
-              ElMessage.success('已打开支付宝支付页面，请完成支付')
+              ElMessage.info('已打开支付宝支付页面，系统将自动检测支付结果...')
               done()
               
-              // 提示查看预订
+              // 开始轮询检测支付状态
+              startPaymentPolling(outTradeNo)
+              
+              // 切换到我的预订页面
               setTimeout(() => {
-                ElMessageBox.confirm(
-                  '请在支付宝页面完成支付，支付完成后可在"我的预订"中查看状态',
-                  '支付提示',
-                  {
-                    confirmButtonText: '查看预订',
-                    cancelButtonText: '继续预订',
-                    type: 'info'
-                  }
-                ).then(() => {
-                  activeTab.value = 'myBookings'
-                  loadMyBookings()
-                }).catch(() => {})
+                activeTab.value = 'myBookings'
+                loadMyBookings()
               }, 100)
             } else {
               // 其他支付方式：直接调用后端接口标记已支付

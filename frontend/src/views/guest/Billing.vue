@@ -143,10 +143,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getBillDetail, settleBill } from '@/api/billing'
-import { createBillAlipay } from '@/api/payment'
+import { createBillAlipay, queryAlipayStatus } from '@/api/payment'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 
@@ -157,6 +157,12 @@ const loading = ref(false)
 const billDetail = ref(null)
 const showSettleDialog = ref(false)
 const settling = ref(false)
+
+// 支付轮询相关
+const pollingTimer = ref(null)
+const currentOutTradeNo = ref(null)
+const pollingCount = ref(0)
+const MAX_POLLING_COUNT = 60  // 最多轮询60次（5分钟）
 
 const settleForm = ref({
   paymentMethod: 'ALIPAY'
@@ -188,15 +194,23 @@ const handleSettle = async () => {
     // 如果选择支付宝支付，跳转到支付宝页面
     if (settleForm.value.paymentMethod === 'ALIPAY') {
       const payResponse = await createBillAlipay(userStore.checkInInfo.recordId)
+      const { outTradeNo, formHtml } = payResponse.data
+      
+      // 保存订单号用于轮询
+      currentOutTradeNo.value = outTradeNo
+      pollingCount.value = 0
       
       // 打开新窗口显示支付宝支付页面
       const payWindow = window.open('', '_blank')
       if (payWindow) {
-        payWindow.document.write(payResponse.data)
+        payWindow.document.write(formHtml)
         payWindow.document.close()
         
-        ElMessage.success('支付页面已打开，请在新窗口完成支付。支付完成后请刷新账单查看状态。')
+        ElMessage.info('支付页面已打开，请在新窗口完成支付。系统将自动检测支付结果...')
         showSettleDialog.value = false
+        
+        // 开始轮询检测支付状态
+        startPolling()
       } else {
         ElMessage.error('无法打开支付窗口，请检查浏览器弹窗设置')
       }
@@ -211,6 +225,46 @@ const handleSettle = async () => {
     ElMessage.error('支付失败：' + (error.message || '未知错误'))
   } finally {
     settling.value = false
+  }
+}
+
+// 开始轮询检测支付状态
+const startPolling = () => {
+  stopPolling() // 先停止之前的轮询
+  
+  pollingTimer.value = setInterval(async () => {
+    pollingCount.value++
+    
+    if (pollingCount.value > MAX_POLLING_COUNT) {
+      stopPolling()
+      ElMessage.warning('支付状态检测超时，请手动刷新页面查看支付结果')
+      return
+    }
+    
+    try {
+      const res = await queryAlipayStatus(currentOutTradeNo.value)
+      const { tradeStatus, success } = res.data
+      
+      if (success) {
+        stopPolling()
+        ElMessage.success('支付成功！')
+        loadBill() // 刷新账单
+      } else if (tradeStatus === 'TRADE_CLOSED') {
+        stopPolling()
+        ElMessage.error('交易已关闭')
+      }
+      // WAIT_BUYER_PAY 或 null 继续轮询
+    } catch (error) {
+      console.error('轮询支付状态失败:', error)
+    }
+  }, 5000) // 每5秒查询一次
+}
+
+// 停止轮询
+const stopPolling = () => {
+  if (pollingTimer.value) {
+    clearInterval(pollingTimer.value)
+    pollingTimer.value = null
   }
 }
 
@@ -236,6 +290,10 @@ const getSummaries = () => {
 
 onMounted(() => {
   loadBill()
+})
+
+onUnmounted(() => {
+  stopPolling() // 组件销毁时停止轮询
 })
 </script>
 

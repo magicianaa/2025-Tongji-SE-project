@@ -301,12 +301,60 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Grid, Money, User, Check, Tools, Tickets } from '@element-plus/icons-vue'
 import { getRoomList, getRoomsByStatus, checkIn, checkOut, getCheckInRecords } from '@/api/room'
 import { getBillDetailByRoomId, settleBill } from '@/api/billing'
-import { createBillAlipay } from '@/api/payment'
+import { createBillAlipay, queryAlipayStatus } from '@/api/payment'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 const userStore = useUserStore()
+
+// 支付轮询相关
+let pollingTimer = null
+let currentOutTradeNo = null
+let pollingCount = 0
+const MAX_POLLING_COUNT = 60
+
+const startPaymentPolling = (outTradeNo, roomId) => {
+  stopPaymentPolling()
+  currentOutTradeNo = outTradeNo
+  pollingCount = 0
+  
+  pollingTimer = setInterval(async () => {
+    pollingCount++
+    
+    if (pollingCount > MAX_POLLING_COUNT) {
+      stopPaymentPolling()
+      ElMessage.warning('支付状态检测超时，请手动刷新查看')
+      return
+    }
+    
+    try {
+      const res = await queryAlipayStatus(currentOutTradeNo)
+      const { tradeStatus, success } = res.data
+      
+      if (success) {
+        stopPaymentPolling()
+        ElMessage.success('支付成功！')
+        // 刷新账单
+        if (roomId) {
+          billDetail.value = await getBillDetailByRoomId(roomId)
+        }
+      } else if (tradeStatus === 'TRADE_CLOSED') {
+        stopPaymentPolling()
+        ElMessage.error('交易已关闭')
+      }
+    } catch (error) {
+      console.error('轮询支付状态失败:', error)
+    }
+  }, 5000)
+}
+
+const stopPaymentPolling = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
 
 // 房间列表
 const rooms = ref([])
@@ -475,15 +523,19 @@ const confirmSettlement = async () => {
     // 如果选择支付宝支付，跳转到支付宝页面
     if (settlementForm.paymentMethod === 'ALIPAY') {
       const payResponse = await createBillAlipay(billDetail.value.recordId)
+      const { outTradeNo, formHtml } = payResponse.data
       
       // 打开新窗口显示支付宝支付页面
       const payWindow = window.open('', '_blank')
       if (payWindow) {
-        payWindow.document.write(payResponse.data)
+        payWindow.document.write(formHtml)
         payWindow.document.close()
         
-        ElMessage.success('支付页面已打开，请在新窗口完成支付。支付完成后请刷新账单查看状态。')
+        ElMessage.info('支付页面已打开，系统将自动检测支付结果...')
         settlementDialogVisible.value = false
+        
+        // 开始轮询检测支付状态
+        startPaymentPolling(outTradeNo, billDetail.value.roomId)
       } else {
         ElMessage.error('无法打开支付窗口，请检查浏览器弹窗设置')
       }

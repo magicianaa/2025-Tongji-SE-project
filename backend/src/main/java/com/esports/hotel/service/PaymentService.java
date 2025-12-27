@@ -2,6 +2,7 @@ package com.esports.hotel.service;
 
 import com.esports.hotel.common.BusinessException;
 import com.esports.hotel.config.AlipayProperties;
+import com.esports.hotel.dto.AlipayFormDTO;
 import com.esports.hotel.dto.BillDetailDTO;
 import com.esports.hotel.entity.Booking;
 import com.esports.hotel.mapper.BookingMapper;
@@ -30,7 +31,7 @@ public class PaymentService {
     private final BookingService bookingService;
     private final BillingService billingService;
 
-    public String createDepositPayForm(Long bookingId) {
+    public AlipayFormDTO createDepositPayForm(Long bookingId) {
         Booking booking = bookingMapper.selectById(bookingId);
         if (booking == null) {
             throw new BusinessException("预订不存在");
@@ -44,16 +45,17 @@ public class PaymentService {
         }
         String outTradeNo = PREFIX_DEPOSIT + bookingId + "-" + System.currentTimeMillis();
         String subject = "预订订金支付-" + bookingId;
-        return alipayService.createPageOrder(
+        String formHtml = alipayService.createPageOrder(
                 outTradeNo,
                 subject,
                 amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
                 alipayProperties.getNotifyUrl(),
                 alipayProperties.getReturnUrl()
         );
+        return new AlipayFormDTO(outTradeNo, formHtml);
     }
 
-    public String createBillPayForm(Long recordId) {
+    public AlipayFormDTO createBillPayForm(Long recordId) {
         BillDetailDTO bill = billingService.getBillDetail(recordId);
         BigDecimal amount = bill.getUnpaidAmount();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -61,13 +63,14 @@ public class PaymentService {
         }
         String outTradeNo = PREFIX_BILL + recordId + "-" + System.currentTimeMillis();
         String subject = "账单清付-入住记录" + recordId;
-        return alipayService.createPageOrder(
+        String formHtml = alipayService.createPageOrder(
                 outTradeNo,
                 subject,
                 amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
                 alipayProperties.getNotifyUrl(),
                 alipayProperties.getReturnUrl()
         );
+        return new AlipayFormDTO(outTradeNo, formHtml);
     }
 
     public boolean handleAlipayNotify(Map<String, String> params) {
@@ -116,5 +119,57 @@ public class PaymentService {
             log.warn("解析 out_trade_no 失败: {}", outTradeNo, e);
             return null;
         }
+    }
+
+    /**
+     * 生成订金支付的商户订单号
+     */
+    public String generateDepositOutTradeNo(Long bookingId) {
+        return PREFIX_DEPOSIT + bookingId + "-" + System.currentTimeMillis();
+    }
+
+    /**
+     * 生成账单支付的商户订单号
+     */
+    public String generateBillOutTradeNo(Long recordId) {
+        return PREFIX_BILL + recordId + "-" + System.currentTimeMillis();
+    }
+
+    /**
+     * 主动查询支付宝交易状态并处理业务（用于轮询场景）
+     * @param outTradeNo 商户订单号
+     * @return 交易状态
+     */
+    public String queryAndProcessPayment(String outTradeNo) {
+        String tradeStatus = alipayService.queryTradeStatus(outTradeNo);
+        if ("TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus)) {
+            // 支付成功，处理业务
+            try {
+                if (outTradeNo.startsWith(PREFIX_DEPOSIT)) {
+                    Long bookingId = parseId(outTradeNo, PREFIX_DEPOSIT);
+                    if (bookingId != null) {
+                        Booking booking = bookingMapper.selectById(bookingId);
+                        // 只有未支付的才处理，避免重复
+                        if (booking != null && "UNPAID".equals(booking.getDepositPaymentStatus())) {
+                            bookingService.payDeposit(bookingId, "ALIPAY");
+                            log.info("轮询检测到支付成功，已处理订金: bookingId={}", bookingId);
+                        }
+                    }
+                } else if (outTradeNo.startsWith(PREFIX_BILL)) {
+                    Long recordId = parseId(outTradeNo, PREFIX_BILL);
+                    if (recordId != null) {
+                        BillDetailDTO bill = billingService.getBillDetail(recordId);
+                        // 只有有未付金额才处理
+                        if (bill.getUnpaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+                            billingService.settleBill(recordId, "ALIPAY");
+                            log.info("轮询检测到支付成功，已处理账单: recordId={}", recordId);
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("轮询处理支付失败: outTradeNo={}", outTradeNo, ex);
+            }
+        }
+        return tradeStatus;
     }
 }
