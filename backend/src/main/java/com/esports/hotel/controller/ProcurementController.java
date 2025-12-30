@@ -1,5 +1,6 @@
 package com.esports.hotel.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.esports.hotel.common.Result;
 import com.esports.hotel.dto.ProcurementRequest;
 import com.esports.hotel.entity.Procurement;
@@ -44,11 +45,11 @@ public class ProcurementController {
 
     @Operation(summary = "分页获取进货记录列表", description = "分页查询进货记录")
     @GetMapping("/list")
-    public Result<List<Procurement>> getProcurementListPaged(
+    public Result<Page<Procurement>> getProcurementListPaged(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("分页查询进货记录: pageNum={}, pageSize={}", pageNum, pageSize);
-        List<Procurement> list = procurementService.getProcurementList();
-        return Result.success(list);
+        Page<Procurement> page = procurementService.getProcurementListPaged(pageNum, pageSize);
+        return Result.success(page);
     }
 }

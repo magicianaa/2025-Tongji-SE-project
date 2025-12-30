@@ -1,6 +1,7 @@
 package com.esports.hotel.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.esports.hotel.common.BusinessException;
 import com.esports.hotel.dto.ProcurementRequest;
 import com.esports.hotel.entity.Procurement;
@@ -93,5 +94,15 @@ public class ProcurementService {
         LambdaQueryWrapper<Procurement> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(Procurement::getProcurementTime);
         return procurementMapper.selectList(wrapper);
+    }
+
+    /**
+     * 分页获取进货记录列表
+     */
+    public Page<Procurement> getProcurementListPaged(int pageNum, int pageSize) {
+        Page<Procurement> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<Procurement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(Procurement::getProcurementTime);
+        return procurementMapper.selectPage(page, wrapper);
     }
 }
