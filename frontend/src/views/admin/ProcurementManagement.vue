@@ -225,7 +225,7 @@ const loadProcurementList = async () => {
 const loadProductList = async () => {
   try {
     const response = await getProducts({ pageSize: 1000 })
-    productList.value = response.data.records || []
+    productList.value = response.records || []
   } catch (error) {
     console.error('加载商品列表失败:', error)
     ElMessage.error('加载商品列表失败')
