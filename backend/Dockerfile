@@ -23,8 +23,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # 从构建阶段复制jar文件
 COPY --from=build /app/target/*.jar app.jar
 
-# 修改文件所有者
-RUN chown -R appuser:appuser /app
+# 创建uploads目录并设置权限
+RUN mkdir -p /app/uploads/task-proofs && chown -R appuser:appuser /app
 
 USER appuser
 

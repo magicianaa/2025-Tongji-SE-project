@@ -142,8 +142,26 @@
         <el-form-item label="奖励积分">
           <el-tag type="success">{{ currentTask.rewardPoints }}分</el-tag>
         </el-form-item>
-        <el-form-item label="截图URL">
-          <el-input v-model="submitForm.proofImageUrl" placeholder="请上传截图后填写URL" />
+        <el-form-item label="截图上传" required>
+          <el-upload
+            class="upload-demo"
+            :action="uploadAction"
+            :headers="uploadHeaders"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :before-upload="beforeUpload"
+            :file-list="fileList"
+            list-type="picture-card"
+            :limit="1"
+            accept="image/*"
+          >
+            <el-icon><Plus /></el-icon>
+            <template #tip>
+              <div class="el-upload__tip">
+                只能上传jpg/png/gif文件，且不超过5MB
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
         <el-form-item label="完成说明">
           <el-input v-model="submitForm.proofDescription" type="textarea" :rows="4" placeholder="请描述完成情况" />
@@ -151,21 +169,30 @@
       </el-form>
       <template #footer>
         <el-button @click="submitDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmSubmit">提交</el-button>
+        <el-button type="primary" @click="confirmSubmit" :disabled="!submitForm.proofImageUrl">提交</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Plus } from '@element-plus/icons-vue'
 import { getTasks, submitTask, getMyTaskRecords } from '@/api/task'
 import { getPointsBalance, getPointsTransactions } from '@/api/points'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+
+// 上传配置
+const uploadAction = '/api/upload/task-proof'
+
+const uploadHeaders = computed(() => {
+  return {
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  }
+})
 
 // 积分信息
 const pointsBalance = ref({})
@@ -188,6 +215,39 @@ const submitForm = ref({
   proofImageUrl: '',
   proofDescription: ''
 })
+const fileList = ref([])
+
+// 文件上传前验证
+const beforeUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt5M = file.size / 1024 / 1024 < 5
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB!')
+    return false
+  }
+  return true
+}
+
+// 文件上传成功
+const handleUploadSuccess = (response) => {
+  if (response.code === 200) {
+    submitForm.value.proofImageUrl = response.data.url
+    ElMessage.success('图片上传成功')
+  } else {
+    ElMessage.error(response.msg || '上传失败')
+  }
+}
+
+// 文件上传失败
+const handleUploadError = (error) => {
+  console.error('上传失败:', error)
+  ElMessage.error('图片上传失败，请重试')
+}
 
 // 加载积分余额
 const loadPointsBalance = async () => {
@@ -242,13 +302,14 @@ const submitTaskProof = (task) => {
     proofImageUrl: '',
     proofDescription: ''
   }
+  fileList.value = []  // 清空文件列表
   submitDialogVisible.value = true
 }
 
 // 确认提交
 const confirmSubmit = async () => {
   if (!submitForm.value.proofImageUrl.trim()) {
-    ElMessage.warning('请填写截图URL')
+    ElMessage.warning('请先上传截图')
     return
   }
 
@@ -359,5 +420,15 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.upload-demo {
+  width: 100%;
+}
+
+.el-upload__tip {
+  color: #999;
+  font-size: 12px;
+  margin-top: 7px;
 }
 </style>

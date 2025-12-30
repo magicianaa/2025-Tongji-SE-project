@@ -11,6 +11,13 @@ spring:
   application:
     name: esports-hotel-backend
   
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -106,6 +113,14 @@ business:
     bronze-to-silver: 1000
     silver-to-gold: 5000
     gold-to-platinum: 10000
+
+# 文件上传配置
+file:
+  upload:
+    # 文件存储路径（相对于项目根目录）
+    path: uploads/
+    # 文件访问URL前缀（包含context-path）
+    url-prefix: /api/files/
 
 # SpringDoc API 文档配置
 springdoc:

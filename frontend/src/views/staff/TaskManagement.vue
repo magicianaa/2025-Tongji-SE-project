@@ -154,11 +154,20 @@
         <div style="margin-top: 20px;">
           <div style="font-weight: bold; margin-bottom: 10px;">凭证截图：</div>
           <el-image 
-            :src="currentRecord.proofImageUrl || '/placeholder.jpg'" 
+            v-if="currentRecord.proofImageUrl"
+            :src="getImageUrl(currentRecord.proofImageUrl)" 
             fit="contain" 
             style="width: 100%; max-height: 400px;"
-            :preview-src-list="[currentRecord.proofImageUrl]"
-          />
+            :preview-src-list="[getImageUrl(currentRecord.proofImageUrl)]"
+          >
+            <template #error>
+              <div class="image-slot">
+                <el-icon><Picture /></el-icon>
+                <div>图片加载失败</div>
+              </div>
+            </template>
+          </el-image>
+          <el-empty v-else description="无凭证截图" :image-size="100" />
         </div>
       </div>
     </el-dialog>
@@ -186,11 +195,26 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Picture } from '@element-plus/icons-vue'
 import { getTasks, createTask, updateTask, deleteTask, getTaskRecords, auditTask } from '@/api/task'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+
+// 获取图片完整URL
+const getImageUrl = (url) => {
+  if (!url) return ''
+  // 如果URL已经包含完整协议，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  // 如果URL以/api开头，直接返回
+  if (url.startsWith('/api/')) {
+    return url
+  }
+  // 否则加上/api前缀
+  return `/api${url}`
+}
 
 // 任务列表
 const tasks = ref([])
@@ -368,5 +392,22 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.image-slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 200px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+
+.image-slot .el-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
 }
 </style>
