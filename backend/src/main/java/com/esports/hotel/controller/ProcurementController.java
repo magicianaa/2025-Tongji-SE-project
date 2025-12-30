@@ -41,4 +41,14 @@ public class ProcurementController {
         List<Procurement> list = procurementService.getProcurementList();
         return Result.success(list);
     }
+
+    @Operation(summary = "分页获取进货记录列表", description = "分页查询进货记录")
+    @GetMapping("/list")
+    public Result<List<Procurement>> getProcurementListPaged(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        log.info("分页查询进货记录: pageNum={}, pageSize={}", pageNum, pageSize);
+        List<Procurement> list = procurementService.getProcurementList();
+        return Result.success(list);
+    }
 }
