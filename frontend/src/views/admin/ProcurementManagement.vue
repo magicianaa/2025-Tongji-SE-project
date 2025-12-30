@@ -211,8 +211,8 @@ const loadProcurementList = async () => {
     }
     
     const response = await getProcurementList(params)
-    procurementList.value = response.data.records
-    total.value = response.data.total
+    procurementList.value = response.records
+    total.value = response.total
   } catch (error) {
     console.error('加载进货列表失败:', error)
     ElMessage.error('加载进货列表失败')
