@@ -462,6 +462,8 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .online-lobby {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .quick-nav {
     margin: 20px 0;

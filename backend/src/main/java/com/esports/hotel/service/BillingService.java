@@ -227,18 +227,22 @@ public class BillingService {
             recordMapper.updateById(r);
             
             // 为每个住客增加积分和经验值
-            Guest guest = guestMapper.selectOne(
-                new LambdaQueryWrapper<Guest>().eq(Guest::getUserId, r.getGuestId())
-            );
+            Guest guest = guestMapper.selectById(r.getGuestId());
             if (guest != null) {
-                pointsService.addPoints(
-                    guest.getGuestId(), 
-                    pointsPerGuest, 
-                    "ADMIN_ADJUST", 
-                    null, 
-                    "账单清付奖励"
-                );
-                log.info("住客 {} 获得清付奖励: {} 积分/经验", guest.getGuestId(), pointsPerGuest);
+                try {
+                    pointsService.addPoints(
+                        guest.getGuestId(), 
+                        pointsPerGuest, 
+                        "ADMIN_ADJUST", 
+                        null, 
+                        "账单清付奖励"
+                    );
+                    log.info("住客 {} 获得清付奖励: {} 积分/经验", guest.getGuestId(), pointsPerGuest);
+                } catch (Exception e) {
+                    log.error("为住客 {} 添加积分失败，但不影响账单结算: {}", guest.getGuestId(), e.getMessage());
+                }
+            } else {
+                log.warn("未找到guestId={}的住客信息，跳过积分奖励", r.getGuestId());
             }
         }
         

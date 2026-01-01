@@ -409,6 +409,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .review-submit-page {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .review-card {
     max-width: 800px;

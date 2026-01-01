@@ -34,7 +34,7 @@
             router
             background-color="#304156"
             text-color="#bfcbd9"
-            active-text-color="#409EFF"
+            active-text-color="#66b1ff"
           >
             <el-menu-item index="/admin/dashboard">
               <el-icon><DataAnalysis /></el-icon>
@@ -142,6 +142,8 @@ const handleCommand = (command) => {
   padding: 8px 16px;
   border-radius: 4px;
   transition: background-color 0.3s;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .user-info:hover {

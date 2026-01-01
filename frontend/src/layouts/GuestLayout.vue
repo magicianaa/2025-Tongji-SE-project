@@ -28,7 +28,6 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
                 <el-dropdown-item command="gaming">电竞档案</el-dropdown-item>
                 <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -45,7 +44,7 @@
             router
             background-color="#1a1a2e"
             text-color="#eaeaea"
-            active-text-color="#0f3460"
+            active-text-color="#b794f6"
           >
             <el-menu-item index="/guest/home">
               <el-icon><HomeFilled /></el-icon>
@@ -138,8 +137,6 @@ const handleCommand = (command) => {
     userStore.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
-  } else if (command === 'profile') {
-    router.push('/guest/profile')
   } else if (command === 'gaming') {
     router.push('/guest/gaming-profile')
   }
@@ -193,6 +190,8 @@ const handleCommand = (command) => {
   padding: 8px 16px;
   border-radius: 4px;
   transition: background-color 0.3s;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .user-info:hover {

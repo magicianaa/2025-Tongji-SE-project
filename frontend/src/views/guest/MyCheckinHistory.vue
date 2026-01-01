@@ -283,6 +283,8 @@ onMounted(() => {
   padding: 20px;
   background: #f5f7fa;
   min-height: calc(100vh - 60px);
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .page-header {

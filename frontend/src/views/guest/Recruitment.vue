@@ -251,6 +251,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .recruitment-page {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .tabs-container {
     margin-top: 20px;

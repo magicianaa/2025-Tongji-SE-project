@@ -229,6 +229,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.pos-orders {
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

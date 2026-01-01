@@ -546,10 +546,8 @@ const confirmSettlement = async () => {
       settlementDialogVisible.value = false
       billDialogVisible.value = false
       
-      // 重新加载账单信息
-      if (billDetail.value) {
-        billDetail.value = await getBillDetailByRoomId(billDetail.value.roomId)
-      }
+      // 刷新房间列表
+      await loadRooms()
     }
   } catch (error) {
     console.error('结算失败：', error)

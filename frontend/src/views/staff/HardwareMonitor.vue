@@ -389,6 +389,8 @@ onUnmounted(() => {
 .hardware-monitor {
   width: 100%;
   min-height: 100%;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .control-card {

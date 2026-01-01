@@ -253,20 +253,22 @@ public class BookingService {
             throw new BusinessException("预订已取消");
         }
         
-        // 4. 验证时间：入住日期当天及之后不可退订
+        // 4. 检查是否已到入住日期（影响是否退款）
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime checkinDate = booking.getPlannedCheckin().toLocalDate().atStartOfDay();
+        boolean isBeforeCheckin = now.isBefore(checkinDate);
         
-        if (!now.isBefore(checkinDate)) {
-            throw new BusinessException("已到入住日期，无法退订。如需取消，请联系前台处理");
-        }
-
-        // 5. 更新状态（入住日期前取消，可全额退款）
+        // 5. 更新状态
         booking.setStatus("CANCELLED");
         bookingMapper.updateById(booking);
 
-        log.info("预订已取消: bookingId={}, guestId={}, 可全额退款: {}", 
-                bookingId, guest.getGuestId(), booking.getDepositAmount());
+        if (isBeforeCheckin) {
+            log.info("预订已取消（入住前）: bookingId={}, guestId={}, 可全额退款: {}", 
+                    bookingId, guest.getGuestId(), booking.getDepositAmount());
+        } else {
+            log.info("预订已取消（入住后）: bookingId={}, guestId={}, 订金不退还: {}", 
+                    bookingId, guest.getGuestId(), booking.getDepositAmount());
+        }
     }
 
     /**

@@ -81,15 +81,6 @@
                 >
                   {{ room.hasBooking ? '已被预订' : '立即预订' }}
                 </el-button>
-                <el-button 
-                  type="info" 
-                  plain
-                  @click="viewRoomReviews(room)" 
-                  style="width: 100%; margin-top: 8px;"
-                  :icon="Document"
-                >
-                  查看评价
-                </el-button>
               </div>
             </el-card>
           </el-col>
@@ -158,12 +149,21 @@
                     支付订金
                   </el-button>
                   <el-button 
-                    v-if="row.depositPaymentStatus === 'PAID' && row.status === 'CONFIRMED'"
+                    v-if="row.depositPaymentStatus === 'PAID' && row.status === 'CONFIRMED' && !isAfterCheckinDate(row)"
                     type="warning" 
                     size="small" 
                     @click="handleRefundDeposit(row)"
                   >
                     申请退款
+                  </el-button>
+                  <el-button 
+                    v-if="row.status === 'CONFIRMED'"
+                    type="danger" 
+                    size="small"
+                    plain
+                    @click="handleCancelBooking(row)"
+                  >
+                    取消预订
                   </el-button>
                   <el-button 
                     v-if="row.status === 'CANCELLED'"
@@ -423,21 +423,21 @@ const handleBook = async (room) => {
   }
 }
 
-// 支付对话框
+// 支付对话框 - 使用对象来追踪选择状态
 const showPaymentDialog = async (bookingResponse) => {
   const paymentMethodOptions = [
-    { label: '现金支付', value: 'CASH' },
     { label: '微信支付', value: 'WECHAT' },
     { label: '支付宝支付', value: 'ALIPAY' },
     { label: '银行卡支付', value: 'CARD' }
   ]
   
-  const paymentMethod = ref('ALIPAY')
+  // 使用reactive对象确保响应式更新
+  const state = reactive({ paymentMethod: 'ALIPAY' })
   
   try {
     await ElMessageBox({
       title: '支付订金',
-      message: h('div', [
+      message: () => h('div', [
         h('p', { style: 'margin-bottom: 15px; font-size: 16px;' }, [
           '预订订金：',
           h('span', { 
@@ -446,20 +446,23 @@ const showPaymentDialog = async (bookingResponse) => {
         ]),
         h('p', { style: 'margin-bottom: 10px;' }, '请选择支付方式：'),
         h(ElRadioGroup, {
-          modelValue: paymentMethod.value,
-          'onUpdate:modelValue': (val) => { paymentMethod.value = val }
+          modelValue: state.paymentMethod,
+          'onUpdate:modelValue': (val) => { state.paymentMethod = val }
         }, () => paymentMethodOptions.map(option => 
-          h(ElRadio, { label: option.value, key: option.value }, () => option.label)
+          h(ElRadio, { 
+            value: option.value, 
+            key: option.value
+          }, () => option.label)
         ))
       ]),
       showCancelButton: true,
       confirmButtonText: '确认支付',
-      cancelButtonText: '稍后支付',
+      cancelButtonText: '取消订单',
       beforeClose: async (action, instance, done) => {
         if (action === 'confirm') {
           instance.confirmButtonLoading = true
           try {
-            if (paymentMethod.value === 'ALIPAY') {
+            if (state.paymentMethod === 'ALIPAY') {
               // 调用支付宝支付
               const payResponse = await createDepositAlipay(bookingResponse.bookingId)
               const { outTradeNo, formHtml } = payResponse
@@ -488,7 +491,7 @@ const showPaymentDialog = async (bookingResponse) => {
                 `/api/bookings/${bookingResponse.bookingId}/pay-deposit`,
                 null,
                 {
-                  params: { paymentMethod: paymentMethod.value },
+                  params: { paymentMethod: state.paymentMethod },
                   headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                   }
@@ -524,13 +527,45 @@ const showPaymentDialog = async (bookingResponse) => {
             instance.confirmButtonLoading = false
           }
         } else {
-          ElMessage.info('您可以稍后在"我的预订"中完成支付')
-          done()
+          // 用户点击取消订单
+          try {
+            await axios.delete(`/api/bookings/${bookingResponse.bookingId}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            })
+            ElMessage.warning('已取消订单')
+            done()
+            // 刷新房间列表
+            if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+              loadAvailableRooms()
+            }
+          } catch (error) {
+            console.error('取消订单失败:', error)
+            ElMessage.error('取消订单失败')
+            done()
+          }
         }
       }
     })
   } catch (error) {
-    // 用户取消或关闭对话框
+    // 用户关闭对话框
+    if (error === 'close') {
+      try {
+        await axios.delete(`/api/bookings/${bookingResponse.bookingId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        ElMessage.warning('已取消订单')
+        // 刷新房间列表
+        if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+          loadAvailableRooms()
+        }
+      } catch (err) {
+        console.error('取消订单失败:', err)
+      }
+    }
   }
 }
 
@@ -652,6 +687,66 @@ const handleRefundDeposit = async (booking) => {
   }
 }
 
+// 检查是否已过入住日期
+const isAfterCheckinDate = (booking) => {
+  const checkinDate = new Date(booking.plannedCheckin)
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  checkinDate.setHours(0, 0, 0, 0)
+  return now >= checkinDate
+}
+
+// 取消预订（不退款，任何时候都可以取消）
+const handleCancelBooking = async (booking) => {
+  try {
+    const isPaid = booking.depositPaymentStatus === 'PAID'
+    const message = isPaid 
+      ? `确认取消预订？<br>
+        房间：${booking.roomNo}<br>
+        入住日期：${formatDate(booking.plannedCheckin)}<br>
+        <span style="color: #f56c6c;">注意：订金¥${booking.depositAmount}不予退还</span>`
+      : `确认取消预订？<br>
+        房间：${booking.roomNo}<br>
+        入住日期：${formatDate(booking.plannedCheckin)}`
+    
+    await ElMessageBox.confirm(
+      message,
+      '取消预订',
+      {
+        confirmButtonText: '确认取消',
+        cancelButtonText: '不取消',
+        dangerouslyUseHTMLString: true,
+        type: 'warning'
+      }
+    )
+
+    const response = await axios.delete(
+      `/api/bookings/${booking.bookingId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }
+    )
+
+    if (response.data.code === 200) {
+      ElMessage.success('已取消预订')
+      loadMyBookings()
+      // 如果在预订tab，也刷新房间列表
+      if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+        loadAvailableRooms()
+      }
+    } else {
+      ElMessage.error(response.data.message || '取消预订失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消预订失败:', error)
+      ElMessage.error(error.response?.data?.message || '取消预订失败，请稍后重试')
+    }
+  }
+}
+
 const loadMyBookings = async () => {
   loadingBookings.value = true
   try {
@@ -688,6 +783,8 @@ onMounted(() => {
 <style scoped>
 .guest-booking {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .room-list {

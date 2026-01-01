@@ -285,6 +285,8 @@ onMounted(() => {
 <style scoped>
 .points-shop-management {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .card-header {

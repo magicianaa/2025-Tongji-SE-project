@@ -245,6 +245,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .team-management {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .content-container {
     margin-top: 20px;

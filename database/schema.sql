@@ -322,7 +322,7 @@ CREATE TABLE `tb_alert_log` (
 CREATE TABLE `tb_gaming_profile` (
   `profile_id` BIGINT NOT NULL AUTO_INCREMENT,
   `guest_id` BIGINT NOT NULL,
-  `record_id` BIGINT NOT NULL COMMENT '关联本次入住记录',
+  `record_id` BIGINT DEFAULT NULL COMMENT '关联本次入住记录（未入住时为NULL，退房时自动设为NULL）',
   `game_type` VARCHAR(64) NOT NULL COMMENT '游戏名称（如：LOL）',
   `game_account` VARCHAR(128) DEFAULT NULL COMMENT '游戏账号',
   `rank` VARCHAR(64) DEFAULT NULL COMMENT '段位（如：黄金IV）',
@@ -334,8 +334,8 @@ CREATE TABLE `tb_gaming_profile` (
   KEY `idx_guest_record` (`guest_id`, `record_id`),
   KEY `idx_rank` (`rank`),
   CONSTRAINT `fk_profile_guest` FOREIGN KEY (`guest_id`) REFERENCES `tb_guest` (`guest_id`),
-  CONSTRAINT `fk_profile_record` FOREIGN KEY (`record_id`) REFERENCES `tb_checkin_record` (`record_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏档案表（入住期间）';
+  CONSTRAINT `fk_profile_record` FOREIGN KEY (`record_id`) REFERENCES `tb_checkin_record` (`record_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏档案表（永久保存，可选关联入住记录）';
 
 -- 招募信息表
 CREATE TABLE `tb_recruitment` (

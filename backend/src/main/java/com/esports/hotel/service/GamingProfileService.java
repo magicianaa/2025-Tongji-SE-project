@@ -41,7 +41,8 @@ public class GamingProfileService {
             throw new RuntimeException("Guest不存在");
         }
         
-        // 查询Guest当前的入住记录
+        // 查询Guest当前的入住记录（可选）
+        final Long recordId;
         LambdaQueryWrapper<CheckInRecord> recordWrapper = new LambdaQueryWrapper<>();
         recordWrapper.eq(CheckInRecord::getGuestId, guestId)
                      .eq(CheckInRecord::getIsGamingAuthActive, true)
@@ -49,15 +50,24 @@ public class GamingProfileService {
                      .orderByDesc(CheckInRecord::getActualCheckin)
                      .last("LIMIT 1");
         CheckInRecord checkInRecord = checkInRecordMapper.selectOne(recordWrapper);
-        
-        if (checkInRecord == null) {
-            throw new RuntimeException("您尚未入住，无法创建游戏档案");
+        if (checkInRecord != null) {
+            recordId = checkInRecord.getRecordId();
+        } else {
+            recordId = null;
         }
         
-        // 查询是否已存在该入住记录的游戏档案
+        // 查询是否已存在该游戏类型的档案（先查找当前入住记录的，再查找通用的）
         LambdaQueryWrapper<GamingProfile> profileWrapper = new LambdaQueryWrapper<>();
-        profileWrapper.eq(GamingProfile::getRecordId, checkInRecord.getRecordId())
+        profileWrapper.eq(GamingProfile::getGuestId, guestId)
                      .eq(GamingProfile::getGameType, request.getGameType());
+        if (recordId != null) {
+            profileWrapper.and(w -> w.eq(GamingProfile::getRecordId, recordId)
+                                    .or().isNull(GamingProfile::getRecordId));
+        } else {
+            profileWrapper.isNull(GamingProfile::getRecordId);
+        }
+        profileWrapper.orderByDesc(GamingProfile::getCreatedAt)
+                     .last("LIMIT 1");
         GamingProfile existingProfile = gamingProfileMapper.selectOne(profileWrapper);
         
         if (existingProfile != null) {
@@ -67,13 +77,17 @@ public class GamingProfileService {
             existingProfile.setPreferredPosition(request.getPreferredPosition());
             existingProfile.setPlayStyle(request.getPlayStyle());
             existingProfile.setIsLookingForTeam(request.getIsLookingForTeam());
+            // 如果之前没有recordId，现在有了，则更新
+            if (existingProfile.getRecordId() == null && recordId != null) {
+                existingProfile.setRecordId(recordId);
+            }
             gamingProfileMapper.updateById(existingProfile);
             return convertToResponse(existingProfile);
         } else {
             // 创建新档案
             GamingProfile profile = new GamingProfile();
             profile.setGuestId(guestId);
-            profile.setRecordId(checkInRecord.getRecordId());
+            profile.setRecordId(recordId); // 可以为null
             profile.setGameType(request.getGameType());
             profile.setGameAccount(request.getGameAccount());
             profile.setRank(request.getRank());
@@ -101,7 +115,7 @@ public class GamingProfileService {
      * 获取Guest当前游戏档案
      */
     public GamingProfileResponse getCurrentProfile(Long guestId, String gameType) {
-        // 查询Guest当前的入住记录
+        // 先查询Guest当前的入住记录
         LambdaQueryWrapper<CheckInRecord> recordWrapper = new LambdaQueryWrapper<>();
         recordWrapper.eq(CheckInRecord::getGuestId, guestId)
                      .eq(CheckInRecord::getIsGamingAuthActive, true)
@@ -110,18 +124,22 @@ public class GamingProfileService {
                      .last("LIMIT 1");
         CheckInRecord checkInRecord = checkInRecordMapper.selectOne(recordWrapper);
         
-        if (checkInRecord == null) {
-            throw new RuntimeException("您尚未入住");
-        }
-        
-        // 查询游戏档案
+        // 查询游戏档案（优先查找当前入住记录的，再查找通用的）
         LambdaQueryWrapper<GamingProfile> profileWrapper = new LambdaQueryWrapper<>();
-        profileWrapper.eq(GamingProfile::getRecordId, checkInRecord.getRecordId())
+        profileWrapper.eq(GamingProfile::getGuestId, guestId)
                      .eq(GamingProfile::getGameType, gameType);
+        if (checkInRecord != null) {
+            profileWrapper.and(w -> w.eq(GamingProfile::getRecordId, checkInRecord.getRecordId())
+                                    .or().isNull(GamingProfile::getRecordId));
+        } else {
+            profileWrapper.isNull(GamingProfile::getRecordId);
+        }
+        profileWrapper.orderByDesc(GamingProfile::getCreatedAt)
+                     .last("LIMIT 1");
         GamingProfile profile = gamingProfileMapper.selectOne(profileWrapper);
         
         if (profile == null) {
-            throw new RuntimeException("游戏档案不存在");
+            return null; // 返回null而不是抛异常，让前端展示创建按钮
         }
         
         return convertToResponse(profile);
@@ -192,17 +210,20 @@ public class GamingProfileService {
         response.setIsLookingForTeam(profile.getIsLookingForTeam());
         response.setCreatedAt(profile.getCreatedAt());
         
-        // 填充Guest和Room信息
+        // 填充Guest信息
         Guest guest = guestMapper.selectById(profile.getGuestId());
         if (guest != null) {
             response.setGuestName(guest.getRealName());
         }
         
-        CheckInRecord record = checkInRecordMapper.selectById(profile.getRecordId());
-        if (record != null) {
-            Room room = roomMapper.selectById(record.getRoomId());
-            if (room != null) {
-                response.setRoomNumber(room.getRoomNo());
+        // 填充Room信息（如果recordId不为null）
+        if (profile.getRecordId() != null) {
+            CheckInRecord record = checkInRecordMapper.selectById(profile.getRecordId());
+            if (record != null) {
+                Room room = roomMapper.selectById(record.getRoomId());
+                if (room != null) {
+                    response.setRoomNumber(room.getRoomNo());
+                }
             }
         }
         

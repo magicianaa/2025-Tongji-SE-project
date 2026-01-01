@@ -242,6 +242,8 @@ onMounted(() => {
 <style scoped>
 .maintenance-tickets {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .card-header {

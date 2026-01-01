@@ -34,7 +34,7 @@
             router
             background-color="#2c3e50"
             text-color="#bfcbd9"
-            active-text-color="#409EFF"
+            active-text-color="#66b1ff"
           >
             <el-menu-item index="/staff/workbench">
               <el-icon><HomeFilled /></el-icon>
@@ -149,6 +149,8 @@ const handleCommand = (command) => {
   padding: 8px 16px;
   border-radius: 4px;
   transition: background-color 0.3s;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .user-info:hover {

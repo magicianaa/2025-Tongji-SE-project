@@ -300,6 +300,8 @@ onUnmounted(() => {
 <style scoped>
 .billing {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .loading {

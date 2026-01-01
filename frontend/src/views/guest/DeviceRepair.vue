@@ -299,6 +299,11 @@ onMounted(() => {
 
 <style scoped>
 .device-repair {
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
+.repair-page {
   padding: 20px;
 }
 

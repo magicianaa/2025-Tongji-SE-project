@@ -111,6 +111,8 @@ onMounted(() => {
 .home-container {
   width: 100%;
   height: 100%;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .stats-grid {

@@ -119,6 +119,8 @@ const handleSocial = () => {
 <style scoped>
 .guest-home {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .room-tip {

@@ -474,6 +474,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .review-management {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .filter-card {
     margin: 20px 0;

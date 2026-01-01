@@ -211,12 +211,16 @@ const loadAllProfiles = async () => {
     try {
       const res = await getCurrentProfile(game.value)
       console.log(`查询${game.label}档案响应：`, res)
-      // 响应拦截器已经提取了data
+      // 响应拦截器已经提取了data，后端返回null表示没有档案
       if (res && res.profileId) {
         currentProfiles.value[game.value] = res
+      } else {
+        // 后端返回null或空对象，表示没有档案
+        delete currentProfiles.value[game.value]
       }
     } catch (error) {
       console.log(`暂无${game.label}档案`, error)
+      delete currentProfiles.value[game.value]
     }
   }
 }
@@ -387,6 +391,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .gaming-profile-page {
   padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 
   .content-container {
     margin-top: 20px;
