@@ -18,8 +18,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -56,14 +55,6 @@
               <el-icon><Box /></el-icon>
               <span>进货管理</span>
             </el-menu-item>
-            <el-menu-item index="/admin/staff">
-              <el-icon><User /></el-icon>
-              <span>员工管理</span>
-            </el-menu-item>
-            <el-menu-item index="/admin/settings">
-              <el-icon><Setting /></el-icon>
-              <span>系统配置</span>
-            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -98,9 +89,6 @@ const handleCommand = (command) => {
     userStore.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
-  } else if (command === 'profile') {
-    // 跳转到个人资料页面
-    router.push('/admin/profile')
   }
 }
 </script>

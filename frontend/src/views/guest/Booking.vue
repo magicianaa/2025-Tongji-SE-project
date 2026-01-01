@@ -434,17 +434,37 @@ const showPaymentDialog = async (bookingResponse) => {
   // 使用reactive对象确保响应式更新
   const state = reactive({ paymentMethod: 'ALIPAY' })
   
+  // 会员等级显示名称
+  const memberLevelNames = {
+    'BRONZE': '青铜会员',
+    'SILVER': '白银会员',
+    'GOLD': '黄金会员',
+    'PLATINUM': '铂金会员'
+  }
+  
   try {
     await ElMessageBox({
-      title: '支付订金',
-      message: () => h('div', [
-        h('p', { style: 'margin-bottom: 15px; font-size: 16px;' }, [
-          '预订订金：',
-          h('span', { 
-            style: 'color: #f56c6c; font-weight: bold; font-size: 20px;' 
-          }, `¥${bookingResponse.depositAmount}`)
+      title: '支付房费',
+      message: () => h('div', { style: 'line-height: 1.8;' }, [
+        // 价格详情
+        h('div', { style: 'background: #f5f7fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;' }, [
+          h('div', { style: 'font-size: 14px; color: #606266; margin-bottom: 8px;' }, [
+            h('span', '入住天数：'),
+            h('span', { style: 'font-weight: bold;' }, `${bookingResponse.stayDays} 天`)
+          ]),
+          h('div', { style: 'font-size: 14px; color: #606266; margin-bottom: 8px;' }, [
+            h('span', '原始房费：'),
+            h('span', { style: 'text-decoration: bookingResponse.discountRate < 1 ? "line-through" : "none"; color: "#909399";' }, 
+              `¥${bookingResponse.originalRoomFee}`),
+            bookingResponse.discountRate < 1 ? h('span', { style: 'color: #67C23A; margin-left: 8px; font-size: 12px;' }, 
+              `(${memberLevelNames[bookingResponse.memberLevel] || '普通会员'} ${(bookingResponse.discountRate * 10).toFixed(1)}折)`) : null
+          ]),
+          h('div', { style: 'font-size: 16px; color: #303133; font-weight: bold; padding-top: 8px; border-top: 1px solid #dcdfe6;' }, [
+            h('span', '应付房费：'),
+            h('span', { style: 'color: #f56c6c; font-size: 22px;' }, `¥${bookingResponse.depositAmount}`)
+          ])
         ]),
-        h('p', { style: 'margin-bottom: 10px;' }, '请选择支付方式：'),
+        h('p', { style: 'margin-bottom: 10px; font-size: 14px; color: #606266;' }, '请选择支付方式：'),
         h(ElRadioGroup, {
           modelValue: state.paymentMethod,
           'onUpdate:modelValue': (val) => { state.paymentMethod = val }

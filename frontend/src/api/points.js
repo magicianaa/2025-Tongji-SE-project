@@ -7,7 +7,7 @@ import request from '@/utils/request'
 // 查询积分余额
 export function getPointsBalance() {
   return request({
-    url: '/api/points/balance',
+    url: '/points/balance',
     method: 'get'
   })
 }
@@ -15,7 +15,7 @@ export function getPointsBalance() {
 // 查询积分流水
 export function getPointsTransactions(limit = 50) {
   return request({
-    url: '/api/points/transactions',
+    url: '/points/transactions',
     method: 'get',
     params: { limit }
   })

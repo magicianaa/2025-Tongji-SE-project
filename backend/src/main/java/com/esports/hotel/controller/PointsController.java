@@ -23,7 +23,7 @@ import java.util.List;
  */
 @Tag(name = "8. 积分管理", description = "积分查询、流水记录")
 @RestController
-@RequestMapping("/api/points")
+@RequestMapping("/points")
 @RequiredArgsConstructor
 public class PointsController {
 

@@ -162,6 +162,12 @@ public class BookingService {
         response.setDepositPaymentStatus(booking.getDepositPaymentStatus());
         response.setDepositPaymentMethod(booking.getDepositPaymentMethod());
         response.setDepositPaymentTime(booking.getDepositPaymentTime());
+        
+        // 添加价格详情信息
+        response.setOriginalRoomFee(totalRoomFee);
+        response.setMemberLevel(guest.getMemberLevel());
+        response.setDiscountRate(discountRate);
+        response.setStayDays(days);
 
         return response;
     }
@@ -225,7 +231,7 @@ public class BookingService {
     }
 
     /**
-     * 取消预订
+     * 取消预订（直接删除未支付的预订）
      */
     @Transactional(rollbackFor = Exception.class)
     public void cancelBooking(Long bookingId, String token) {
@@ -253,12 +259,19 @@ public class BookingService {
             throw new BusinessException("预订已取消");
         }
         
-        // 4. 检查是否已到入住日期（影响是否退款）
+        // 4. 如果是未支付的预订，直接删除记录
+        if ("PENDING".equals(booking.getStatus()) && "UNPAID".equals(booking.getDepositPaymentStatus())) {
+            bookingMapper.deleteById(bookingId);
+            log.info("未支付预订已删除: bookingId={}, guestId={}", bookingId, guest.getGuestId());
+            return;
+        }
+        
+        // 5. 如果是已支付的预订，检查是否已到入住日期（影响是否退款）
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime checkinDate = booking.getPlannedCheckin().toLocalDate().atStartOfDay();
         boolean isBeforeCheckin = now.isBefore(checkinDate);
         
-        // 5. 更新状态
+        // 6. 更新状态为已取消
         booking.setStatus("CANCELLED");
         bookingMapper.updateById(booking);
 

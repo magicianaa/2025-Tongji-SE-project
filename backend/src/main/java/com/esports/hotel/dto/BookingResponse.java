@@ -52,6 +52,18 @@ public class BookingResponse {
     @Schema(description = "订金支付状态")
     private String depositPaymentStatus;
 
+    @Schema(description = "原始房费（未打折）")
+    private BigDecimal originalRoomFee;
+
+    @Schema(description = "会员等级")
+    private String memberLevel;
+
+    @Schema(description = "折扣率")
+    private BigDecimal discountRate;
+
+    @Schema(description = "入住天数")
+    private Long stayDays;
+
     @Schema(description = "订金支付方式")
     private String depositPaymentMethod;
 
