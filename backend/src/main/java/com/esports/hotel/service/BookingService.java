@@ -174,14 +174,17 @@ public class BookingService {
     
     /**
      * 根据会员等级获取折扣率
+     * 青铜: 1.00 (无折扣)
+     * 白银: 0.95 (5%折扣)
+     * 黄金: 0.90 (10%折扣)
+     * 铂金: 0.85 (15%折扣)
      */
     private BigDecimal getMemberDiscountRate(String memberLevel) {
         return switch (memberLevel) {
-            case "BRONZE" -> BigDecimal.valueOf(0.95);    // 95折
-            case "SILVER" -> BigDecimal.valueOf(0.90);    // 90折
-            case "GOLD" -> BigDecimal.valueOf(0.85);      // 85折
-            case "PLATINUM" -> BigDecimal.valueOf(0.80);  // 80折
-            default -> BigDecimal.valueOf(1.00);          // 无折扣
+            case "SILVER" -> BigDecimal.valueOf(0.95);    // 95折
+            case "GOLD" -> BigDecimal.valueOf(0.90);      // 90折
+            case "PLATINUM" -> BigDecimal.valueOf(0.85);  // 85折
+            default -> BigDecimal.valueOf(1.00);          // 无折扣 (BRONZE)
         };
     }
 

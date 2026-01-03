@@ -51,11 +51,11 @@
         <li>二次鉴权机制：确保入住客人才能访问房间控制功能</li>
       </ul>
       <div class="quick-actions">
-        <el-button type="primary" @click="router.push('/rooms')">
+        <el-button type="primary" @click="router.push('/staff/rooms')">
           <el-icon><OfficeBuilding /></el-icon>
           查看房态
         </el-button>
-        <el-button type="success" @click="router.push('/hardware')">
+        <el-button type="success" @click="router.push('/staff/hardware')">
           <el-icon><Monitor /></el-icon>
           硬件监控
         </el-button>

@@ -27,11 +27,53 @@
           </el-col>
           <el-col :span="6">
             <div class="member-level">
-              <div class="label">会员折扣</div>
+              <div class="label">当前折扣</div>
               <el-tag type="success" size="large">
                 {{ ((1 - (pointsBalance.discountRate || 1)) * 100).toFixed(0) }}% OFF
               </el-tag>
             </div>
+          </el-col>
+        </el-row>
+      </div>
+    </el-card>
+
+    <!-- 会员等级体系说明 -->
+    <el-card style="margin-top: 20px;">
+      <template #header>
+        <span>会员等级体系与折扣说明</span>
+      </template>
+      <div class="level-system">
+        <el-row :gutter="20">
+          <el-col :span="6" v-for="level in memberLevels" :key="level.name">
+            <el-card 
+              shadow="hover" 
+              :class="['level-card', { 'current-level': pointsBalance.memberLevel === level.name }]"
+            >
+              <div class="level-icon">
+                <el-icon :size="40" :color="level.color">
+                  <component :is="level.icon" />
+                </el-icon>
+              </div>
+              <div class="level-name">
+                <el-tag :type="getMemberLevelType(level.name)" size="large">
+                  {{ level.label }}
+                </el-tag>
+              </div>
+              <div class="level-requirement">
+                <span class="requirement-text">{{ level.requirement }}</span>
+              </div>
+              <div class="level-discount">
+                <el-tag type="success" effect="dark" size="large">
+                  {{ level.discount }}
+                </el-tag>
+              </div>
+              <div class="level-description">
+                {{ level.description }}
+              </div>
+              <div class="current-badge" v-if="pointsBalance.memberLevel === level.name">
+                <el-tag type="warning" effect="dark">当前等级</el-tag>
+              </div>
+            </el-card>
           </el-col>
         </el-row>
       </div>
@@ -178,12 +220,52 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Plus } from '@element-plus/icons-vue'
+import { Refresh, Plus, Medal, Trophy, Star, TrophyBase } from '@element-plus/icons-vue'
 import { getTasks, submitTask, getMyTaskRecords } from '@/api/task'
 import { getPointsBalance, getPointsTransactions } from '@/api/points'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+
+// 会员等级体系配置
+const memberLevels = [
+  {
+    name: 'BRONZE',
+    label: '青铜会员',
+    requirement: '0 经验值',
+    discount: '无折扣',
+    description: '新会员起步等级，完成任务即可升级',
+    color: '#cd7f32',
+    icon: Medal
+  },
+  {
+    name: 'SILVER',
+    label: '白银会员',
+    requirement: '1000 经验值',
+    discount: '95折优惠',
+    description: '享受房费5%折扣，积分获取更快',
+    color: '#c0c0c0',
+    icon: Trophy
+  },
+  {
+    name: 'GOLD',
+    label: '黄金会员',
+    requirement: '5000 经验值',
+    discount: '90折优惠',
+    description: '享受房费10%折扣，更多专属特权',
+    color: '#ffd700',
+    icon: Star
+  },
+  {
+    name: 'PLATINUM',
+    label: '铂金会员',
+    requirement: '10000 经验值',
+    discount: '85折优惠',
+    description: '顶级会员，享受房费15%折扣及最高礼遇',
+    color: '#e5e4e2',
+    icon: TrophyBase
+  }
+]
 
 // 上传配置
 const uploadAction = '/api/upload/task-proof'
@@ -432,5 +514,77 @@ onMounted(() => {
   color: #999;
   font-size: 12px;
   margin-top: 7px;
+}
+
+/* 会员等级体系样式 */
+.level-system {
+  padding: 10px 0;
+}
+
+.level-card {
+  text-align: center;
+  padding: 20px;
+  min-height: 280px;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.level-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.level-card.current-level {
+  border: 2px solid #f39c12;
+  background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+}
+
+.level-icon {
+  margin-bottom: 15px;
+}
+
+.level-name {
+  margin-bottom: 10px;
+}
+
+.level-requirement {
+  margin: 12px 0;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.requirement-text {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.level-discount {
+  margin: 15px 0;
+}
+
+.level-discount .el-tag {
+  font-size: 16px;
+  padding: 8px 16px;
+  font-weight: bold;
+}
+
+.level-description {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.6;
+  margin-top: 10px;
+  min-height: 40px;
+}
+
+.current-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.current-badge .el-tag {
+  font-weight: bold;
 }
 </style>

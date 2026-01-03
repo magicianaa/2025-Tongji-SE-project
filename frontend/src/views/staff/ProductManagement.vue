@@ -101,6 +101,7 @@
             <el-option label="零食" value="SNACK" />
             <el-option label="饮料" value="BEVERAGE" />
             <el-option label="外设" value="PERIPHERAL" />
+            <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类" prop="category">
