@@ -23,7 +23,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/esports_hotel_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: mmmm8888
+    password: '#Tongji-SE-2025-MySql#'
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
