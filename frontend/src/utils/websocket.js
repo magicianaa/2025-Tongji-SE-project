@@ -26,8 +26,10 @@ class WebSocketService {
     const socket = new SockJS(wsUrl);
     this.stompClient = Stomp.over(socket);
     
-    // 禁用调试日志（生产环境）
-    this.stompClient.debug = null;
+    // 开启调试日志（临时用于排查问题）
+    this.stompClient.debug = (str) => {
+      console.log('[STOMP Debug]', str);
+    };
 
     this.stompClient.connect(
       {},
