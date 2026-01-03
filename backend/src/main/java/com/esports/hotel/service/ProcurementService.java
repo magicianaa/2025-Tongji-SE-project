@@ -6,11 +6,9 @@ import com.esports.hotel.common.BusinessException;
 import com.esports.hotel.dto.ProcurementRequest;
 import com.esports.hotel.entity.Procurement;
 import com.esports.hotel.entity.Product;
-import com.esports.hotel.entity.Staff;
 import com.esports.hotel.entity.User;
 import com.esports.hotel.mapper.ProcurementMapper;
 import com.esports.hotel.mapper.ProductMapper;
-import com.esports.hotel.mapper.StaffMapper;
 import com.esports.hotel.mapper.UserMapper;
 import com.esports.hotel.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +30,6 @@ public class ProcurementService {
 
     private final ProcurementMapper procurementMapper;
     private final ProductMapper productMapper;
-    private final StaffMapper staffMapper;
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
 
@@ -50,11 +47,9 @@ public class ProcurementService {
             throw new BusinessException("用户不存在");
         }
 
-        LambdaQueryWrapper<Staff> staffWrapper = new LambdaQueryWrapper<>();
-        staffWrapper.eq(Staff::getUserId, userId);
-        Staff staff = staffMapper.selectOne(staffWrapper);
-        if (staff == null) {
-            throw new BusinessException("员工信息不存在");
+        // 验证用户是否为管理员
+        if (!"ADMIN".equals(user.getUserType())) {
+            throw new BusinessException("只有管理员才能进行进货操作");
         }
 
         // 2. 查询商品
@@ -74,7 +69,7 @@ public class ProcurementService {
         procurement.setTotalCost(totalCost);
         procurement.setSupplier(request.getSupplier());
         procurement.setProcurementTime(LocalDateTime.now());
-        procurement.setOperatorId(staff.getStaffId());
+        procurement.setOperatorId(userId);  // 直接使用 userId 作为操作员ID
         procurement.setNotes(request.getNotes());
         procurementMapper.insert(procurement);
 

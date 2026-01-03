@@ -266,7 +266,7 @@ const handleSubmit = async () => {
     const data = {
       productId: form.productId,
       quantity: form.quantity,
-      unitPrice: form.unitPrice,
+      unitCost: form.unitPrice,  // 后端接收的字段名是 unitCost
       supplier: form.supplier,
       notes: form.notes
     }

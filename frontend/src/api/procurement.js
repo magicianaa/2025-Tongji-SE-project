@@ -16,7 +16,7 @@ export function getProcurementList(params) {
 // 创建进货记录
 export function createProcurement(data) {
   return request({
-    url: '/procurement/create',
+    url: '/procurement',
     method: 'post',
     data
   })
