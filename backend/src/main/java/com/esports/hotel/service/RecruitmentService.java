@@ -207,12 +207,17 @@ public class RecruitmentService {
         System.out.println("目标用户: " + targetUser);
         System.out.println("通知类型: " + notification.getType());
         System.out.println("通知内容: " + notification.getMessage());
+        System.out.println("订阅目标: /user/" + targetUser + "/queue/recruitment");
         
         // 使用convertAndSendToUser，让Spring自动处理用户路由
-        // 前端只需要订阅 /user/queue/recruitment 即可
-        messagingTemplate.convertAndSendToUser(targetUser, "/queue/recruitment", notification);
-        
-        System.out.println("消息已通过convertAndSendToUser发送到用户: " + targetUser);
+        // Spring会自动添加 /user/ 前缀，所以只需要指定队列名称
+        try {
+            messagingTemplate.convertAndSendToUser(targetUser, "/queue/recruitment", notification);
+            System.out.println("✓ 消息已通过convertAndSendToUser发送到用户: " + targetUser);
+        } catch (Exception e) {
+            System.err.println("✗ WebSocket推送失败: " + e.getMessage());
+            e.printStackTrace();
+        }
         System.out.println("========================");
         
         System.out.println("Guest [" + guest.getRealName() + "] 申请加入招募 [" + recruitmentId + "]，已通过WebSocket推送");
