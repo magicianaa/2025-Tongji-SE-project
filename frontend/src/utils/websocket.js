@@ -17,8 +17,13 @@ class WebSocketService {
       return;
     }
 
-    // 在URL中添加guestId参数，用于握手时识别用户
-    const socket = new SockJS(`http://localhost:8080/api/ws?guestId=${guestId}`);
+    // 动态获取WebSocket地址，根据当前环境自动切换
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const host = window.location.host; // 自动获取当前域名和端口
+    const wsUrl = `${protocol}//${host}/api/ws?guestId=${guestId}`;
+    
+    console.log('WebSocket connecting to:', wsUrl);
+    const socket = new SockJS(wsUrl);
     this.stompClient = Stomp.over(socket);
     
     // 禁用调试日志（生产环境）
