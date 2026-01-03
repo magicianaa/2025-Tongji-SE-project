@@ -250,6 +250,7 @@ public class TeamService {
     
     /**
      * 获取我的战队
+     * @return 战队信息，如果未加入任何战队则返回null
      */
     public TeamResponse getMyTeam(Long guestId) {
         LambdaQueryWrapper<TeamMember> memberWrapper = new LambdaQueryWrapper<>();
@@ -258,12 +259,14 @@ public class TeamService {
         TeamMember member = teamMemberMapper.selectOne(memberWrapper);
         
         if (member == null) {
-            throw new RuntimeException("您未加入任何战队");
+            // 未加入任何战队，返回null而不是抛异常
+            return null;
         }
         
         Team team = teamMapper.selectById(member.getTeamId());
         if (team == null) {
-            throw new RuntimeException("战队不存在");
+            // 战队不存在，返回null
+            return null;
         }
         
         return convertToResponse(team);
