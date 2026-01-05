@@ -82,13 +82,34 @@
               <span class="label">需要人数：</span>
               <span class="value">{{ recruitment.maxMembers }} 人</span>
             </div>
+            <div class="info-row" v-if="recruitment.currentApplicants > 0">
+              <span class="label">待处理申请：</span>
+              <el-badge :value="recruitment.currentApplicants" class="applicant-badge">
+                <span class="value">{{ recruitment.currentApplicants }} 人</span>
+              </el-badge>
+            </div>
             <div class="description">
               <el-text line-clamp="3">{{ recruitment.description || '无描述' }}</el-text>
             </div>
           </div>
 
+          <!-- 发布者操作按钮 -->
+          <div v-if="recruitment.publisherId === (userStore.checkInInfo?.guestId || userStore.userInfo?.guestId)" class="publisher-actions">
+            <el-button 
+              type="primary" 
+              size="default" 
+              @click="handleViewApplications(recruitment)" 
+              style="width: 100%; margin-top: 15px;"
+            >
+              <el-badge :value="recruitment.currentApplicants" :hidden="recruitment.currentApplicants === 0" class="btn-badge">
+                查看申请列表
+              </el-badge>
+            </el-button>
+          </div>
+
+          <!-- 非发布者申请按钮 -->
           <el-button 
-            v-if="recruitment.status === 'OPEN'" 
+            v-else-if="recruitment.status === 'OPEN'" 
             type="primary" 
             size="default" 
             @click="handleApply(recruitment)" 
@@ -145,6 +166,59 @@
         <el-button type="primary" @click="handlePublish" :loading="publishLoading">发布</el-button>
       </template>
     </el-dialog>
+
+    <!-- 申请列表对话框 -->
+    <el-dialog v-model="applicationsDialogVisible" title="申请列表" width="700px">
+      <div v-loading="applicationsLoading">
+        <el-empty v-if="applications.length === 0" description="暂无申请" />
+        <el-table v-else :data="applications" style="width: 100%">
+          <el-table-column prop="applicantName" label="申请者" width="100" />
+          <el-table-column prop="applicantRoom" label="房间号" width="80">
+            <template #default="{ row }">
+              {{ row.applicantRoom || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="applicantRank" label="段位" width="100">
+            <template #default="{ row }">
+              <el-tag v-if="row.applicantRank" type="warning" size="small">
+                {{ getRankLabel(row.applicantRank) }}
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="applicantPosition" label="位置" width="80">
+            <template #default="{ row }">
+              {{ row.applicantPosition || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="applyTime" label="申请时间" width="160">
+            <template #default="{ row }">
+              {{ formatTime(row.applyTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag v-if="row.status === 'PENDING'" type="warning">待处理</el-tag>
+              <el-tag v-else-if="row.status === 'APPROVED'" type="success">已同意</el-tag>
+              <el-tag v-else-if="row.status === 'REJECTED'" type="danger">已拒绝</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150">
+            <template #default="{ row }">
+              <template v-if="row.status === 'PENDING'">
+                <el-button type="success" size="small" @click="handleApproveFromList(row)">同意</el-button>
+                <el-button type="danger" size="small" @click="handleRejectFromList(row)">拒绝</el-button>
+              </template>
+              <span v-else class="handled-text">已处理</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="applicationsDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="refreshApplications">刷新</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -159,7 +233,8 @@ import {
   applyToRecruitment,
   approveApplication,
   rejectApplication,
-  deleteRecruitment
+  deleteRecruitment,
+  getRecruitmentApplications
 } from '@/api/team'
 import { useUserStore } from '@/stores/user'
 import websocketService from '@/utils/websocket'
@@ -170,6 +245,12 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const publishLoading = ref(false)
 const formRef = ref(null)
+
+// 申请列表相关
+const applicationsDialogVisible = ref(false)
+const applicationsLoading = ref(false)
+const applications = ref([])
+const currentViewingRecruitment = ref(null)
 
 const filters = reactive({
   gameType: '',
@@ -324,6 +405,115 @@ const handleDelete = async (recruitment) => {
       ElMessage.error(error.message || '删除失败')
     }
   }
+}
+
+// ==================== 申请列表相关方法 ====================
+
+/**
+ * 查看申请列表
+ */
+const handleViewApplications = async (recruitment) => {
+  currentViewingRecruitment.value = recruitment
+  applicationsDialogVisible.value = true
+  await loadApplications(recruitment.recruitmentId)
+}
+
+/**
+ * 加载申请列表
+ */
+const loadApplications = async (recruitmentId) => {
+  applicationsLoading.value = true
+  try {
+    const res = await getRecruitmentApplications(recruitmentId)
+    applications.value = res || []
+  } catch (error) {
+    console.error('加载申请列表失败：', error)
+    ElMessage.error(error.message || '加载申请列表失败')
+    applications.value = []
+  } finally {
+    applicationsLoading.value = false
+  }
+}
+
+/**
+ * 刷新申请列表
+ */
+const refreshApplications = async () => {
+  if (currentViewingRecruitment.value) {
+    await loadApplications(currentViewingRecruitment.value.recruitmentId)
+    ElMessage.success('已刷新')
+  }
+}
+
+/**
+ * 从列表同意申请
+ */
+const handleApproveFromList = async (application) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定同意 ${application.applicantName} 的申请吗？`,
+      '确认同意',
+      {
+        confirmButtonText: '同意',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+    
+    await approveApplication(application.recruitmentId, application.applicantId)
+    ElMessage.success('已同意申请，队员已加入战队')
+    
+    // 刷新申请列表和招募列表
+    await refreshApplications()
+    handleSearch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('同意申请失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
+}
+
+/**
+ * 从列表拒绝申请
+ */
+const handleRejectFromList = async (application) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定拒绝 ${application.applicantName} 的申请吗？`,
+      '确认拒绝',
+      {
+        confirmButtonText: '拒绝',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await rejectApplication(application.recruitmentId, application.applicantId)
+    ElMessage.info('已拒绝申请')
+    
+    // 刷新申请列表和招募列表
+    await refreshApplications()
+    handleSearch()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('拒绝申请失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
+}
+
+/**
+ * 格式化时间
+ */
+const formatTime = (time) => {
+  if (!time) return '-'
+  if (Array.isArray(time)) {
+    // LocalDateTime数组格式 [year, month, day, hour, minute, second]
+    const [year, month, day, hour = 0, minute = 0, second = 0] = time
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`
+  }
+  return time
 }
 
 const getGameLabel = (value) => {
@@ -522,6 +712,12 @@ onBeforeUnmount(() => {
           color: #303133;
           font-weight: 500;
         }
+
+        .applicant-badge {
+          :deep(.el-badge__content) {
+            background-color: #e6a23c;
+          }
+        }
       }
 
       .description {
@@ -535,6 +731,20 @@ onBeforeUnmount(() => {
         line-height: 1.6;
       }
     }
+
+    .publisher-actions {
+      .btn-badge {
+        :deep(.el-badge__content) {
+          top: -5px;
+          right: -15px;
+        }
+      }
+    }
+  }
+
+  .handled-text {
+    color: #909399;
+    font-size: 12px;
   }
 }
 </style>

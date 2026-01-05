@@ -99,6 +99,26 @@ export function rejectApplication(recruitmentId, applicantId) {
   })
 }
 
+/**
+ * 获取招募的申请列表
+ */
+export function getRecruitmentApplications(recruitmentId) {
+  return request({
+    url: `/recruitments/${recruitmentId}/applications`,
+    method: 'get'
+  })
+}
+
+/**
+ * 获取待处理申请数量
+ */
+export function getPendingApplicationsCount() {
+  return request({
+    url: '/recruitments/applications/pending-count',
+    method: 'get'
+  })
+}
+
 // ==================== 战队管理 ====================
 
 /**

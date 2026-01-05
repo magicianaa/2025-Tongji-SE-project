@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +32,7 @@ public class RecruitmentService {
     private final CheckInRecordMapper checkInRecordMapper;
     private final RoomMapper roomMapper;
     private final SimpMessagingTemplate messagingTemplate;  // WebSocket消息发送
+    private final RecruitmentApplicationMapper recruitmentApplicationMapper;  // 申请记录Mapper
     
     /**
      * 发布招募信息
@@ -148,8 +150,9 @@ public class RecruitmentService {
     }
     
     /**
-     * 申请加入招募（实时推送给发布者）
+     * 申请加入招募（保存申请记录 + 实时推送给发布者）
      */
+    @Transactional
     public void applyToRecruitment(Long recruitmentId, Long guestId) {
         Recruitment recruitment = recruitmentMapper.selectById(recruitmentId);
         if (recruitment == null) {
@@ -169,6 +172,24 @@ public class RecruitmentService {
         if (guest == null) {
             throw new RuntimeException("Guest不存在");
         }
+        
+        // 检查是否已经申请过（状态为PENDING）
+        LambdaQueryWrapper<RecruitmentApplication> existWrapper = new LambdaQueryWrapper<>();
+        existWrapper.eq(RecruitmentApplication::getRecruitmentId, recruitmentId)
+                   .eq(RecruitmentApplication::getApplicantId, guestId)
+                   .eq(RecruitmentApplication::getStatus, "PENDING");
+        RecruitmentApplication existApplication = recruitmentApplicationMapper.selectOne(existWrapper);
+        if (existApplication != null) {
+            throw new RuntimeException("您已申请过该招募，请等待处理");
+        }
+        
+        // 保存申请记录到数据库
+        RecruitmentApplication application = new RecruitmentApplication();
+        application.setRecruitmentId(recruitmentId);
+        application.setApplicantId(guestId);
+        application.setStatus("PENDING");
+        application.setApplyTime(LocalDateTime.now());
+        recruitmentApplicationMapper.insert(application);
         
         // 获取申请者房间号
         String roomNumber = null;
@@ -220,7 +241,7 @@ public class RecruitmentService {
         }
         System.out.println("========================");
         
-        System.out.println("Guest [" + guest.getRealName() + "] 申请加入招募 [" + recruitmentId + "]，已通过WebSocket推送");
+        System.out.println("Guest [" + guest.getRealName() + "] 申请加入招募 [" + recruitmentId + "]，申请已保存并通过WebSocket推送");
     }
     
     /**
@@ -235,6 +256,18 @@ public class RecruitmentService {
         
         if (!recruitment.getPublisherId().equals(captainId)) {
             throw new RuntimeException("只有发布者才能同意申请");
+        }
+        
+        // 更新申请记录状态为已同意
+        LambdaQueryWrapper<RecruitmentApplication> appWrapper = new LambdaQueryWrapper<>();
+        appWrapper.eq(RecruitmentApplication::getRecruitmentId, recruitmentId)
+                  .eq(RecruitmentApplication::getApplicantId, applicantId)
+                  .eq(RecruitmentApplication::getStatus, "PENDING");
+        RecruitmentApplication application = recruitmentApplicationMapper.selectOne(appWrapper);
+        if (application != null) {
+            application.setStatus("APPROVED");
+            application.setHandleTime(LocalDateTime.now());
+            recruitmentApplicationMapper.updateById(application);
         }
         
         // 创建或加入战队
@@ -262,6 +295,7 @@ public class RecruitmentService {
     /**
      * 拒绝申请（实时通知）
      */
+    @Transactional
     public void rejectApplication(Long recruitmentId, Long applicantId, Long captainId) {
         Recruitment recruitment = recruitmentMapper.selectById(recruitmentId);
         if (recruitment == null) {
@@ -270,6 +304,18 @@ public class RecruitmentService {
         
         if (!recruitment.getPublisherId().equals(captainId)) {
             throw new RuntimeException("只有发布者才能拒绝申请");
+        }
+        
+        // 更新申请记录状态为已拒绝
+        LambdaQueryWrapper<RecruitmentApplication> appWrapper = new LambdaQueryWrapper<>();
+        appWrapper.eq(RecruitmentApplication::getRecruitmentId, recruitmentId)
+                  .eq(RecruitmentApplication::getApplicantId, applicantId)
+                  .eq(RecruitmentApplication::getStatus, "PENDING");
+        RecruitmentApplication application = recruitmentApplicationMapper.selectOne(appWrapper);
+        if (application != null) {
+            application.setStatus("REJECTED");
+            application.setHandleTime(LocalDateTime.now());
+            recruitmentApplicationMapper.updateById(application);
         }
         
         // 通过WebSocket通知申请者被拒绝
@@ -345,6 +391,101 @@ public class RecruitmentService {
     }
     
     /**
+     * 获取招募的申请列表（发布者查看）
+     */
+    public List<RecruitmentApplicationResponse> getRecruitmentApplications(Long recruitmentId, Long guestId) {
+        // 验证招募存在
+        Recruitment recruitment = recruitmentMapper.selectById(recruitmentId);
+        if (recruitment == null) {
+            throw new RuntimeException("招募信息不存在");
+        }
+        
+        // 验证是发布者本人
+        if (!recruitment.getPublisherId().equals(guestId)) {
+            throw new RuntimeException("只有发布者才能查看申请列表");
+        }
+        
+        // 查询申请列表
+        LambdaQueryWrapper<RecruitmentApplication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(RecruitmentApplication::getRecruitmentId, recruitmentId)
+               .orderByDesc(RecruitmentApplication::getApplyTime);
+        List<RecruitmentApplication> applications = recruitmentApplicationMapper.selectList(wrapper);
+        
+        // 转换为响应DTO
+        List<RecruitmentApplicationResponse> responses = new ArrayList<>();
+        for (RecruitmentApplication app : applications) {
+            RecruitmentApplicationResponse response = new RecruitmentApplicationResponse();
+            response.setApplicationId(app.getApplicationId());
+            response.setRecruitmentId(app.getRecruitmentId());
+            response.setApplicantId(app.getApplicantId());
+            response.setStatus(app.getStatus());
+            response.setApplyTime(app.getApplyTime());
+            response.setHandleTime(app.getHandleTime());
+            
+            // 填充申请者信息
+            Guest applicant = guestMapper.selectById(app.getApplicantId());
+            if (applicant != null) {
+                response.setApplicantName(applicant.getRealName());
+            }
+            
+            // 获取申请者房间号
+            LambdaQueryWrapper<CheckInRecord> recordWrapper = new LambdaQueryWrapper<>();
+            recordWrapper.eq(CheckInRecord::getGuestId, app.getApplicantId())
+                        .isNull(CheckInRecord::getActualCheckout)
+                        .orderByDesc(CheckInRecord::getActualCheckin)
+                        .last("LIMIT 1");
+            CheckInRecord checkInRecord = checkInRecordMapper.selectOne(recordWrapper);
+            if (checkInRecord != null && checkInRecord.getRoomId() != null) {
+                Room room = roomMapper.selectById(checkInRecord.getRoomId());
+                if (room != null) {
+                    response.setApplicantRoom(room.getRoomNo());
+                }
+            }
+            
+            // 获取申请者游戏档案（对应招募的游戏类型）
+            LambdaQueryWrapper<GamingProfile> profileWrapper = new LambdaQueryWrapper<>();
+            profileWrapper.eq(GamingProfile::getGuestId, app.getApplicantId())
+                         .eq(GamingProfile::getGameType, recruitment.getGameType())
+                         .orderByDesc(GamingProfile::getCreatedAt)
+                         .last("LIMIT 1");
+            GamingProfile profile = gamingProfileMapper.selectOne(profileWrapper);
+            if (profile != null) {
+                response.setApplicantRank(profile.getRank());
+                response.setApplicantPosition(profile.getPreferredPosition());
+            }
+            
+            responses.add(response);
+        }
+        
+        return responses;
+    }
+    
+    /**
+     * 获取我发布的所有招募的待处理申请数量
+     */
+    public int getPendingApplicationsCount(Long guestId) {
+        // 获取我的所有招募ID
+        LambdaQueryWrapper<Recruitment> recruitmentWrapper = new LambdaQueryWrapper<>();
+        recruitmentWrapper.eq(Recruitment::getPublisherId, guestId);
+        List<Recruitment> myRecruitments = recruitmentMapper.selectList(recruitmentWrapper);
+        
+        if (myRecruitments.isEmpty()) {
+            return 0;
+        }
+        
+        List<Long> recruitmentIds = myRecruitments.stream()
+                .map(Recruitment::getRecruitmentId)
+                .collect(Collectors.toList());
+        
+        // 统计待处理申请数量
+        LambdaQueryWrapper<RecruitmentApplication> appWrapper = new LambdaQueryWrapper<>();
+        appWrapper.in(RecruitmentApplication::getRecruitmentId, recruitmentIds)
+                  .eq(RecruitmentApplication::getStatus, "PENDING");
+        Long count = recruitmentApplicationMapper.selectCount(appWrapper);
+        return count != null ? count.intValue() : 0;
+    }
+    
+    /**
      * 转换为响应DTO
      */
     private RecruitmentResponse convertToResponse(Recruitment recruitment) {
@@ -379,8 +520,12 @@ public class RecruitmentService {
             }
         }
         
-        // 这里可以添加已应征人数统计（需要后续实现应征功能）
-        response.setCurrentApplicants(0);
+        // 统计待处理申请人数
+        LambdaQueryWrapper<RecruitmentApplication> appWrapper = new LambdaQueryWrapper<>();
+        appWrapper.eq(RecruitmentApplication::getRecruitmentId, recruitment.getRecruitmentId())
+                  .eq(RecruitmentApplication::getStatus, "PENDING");
+        Long pendingCount = recruitmentApplicationMapper.selectCount(appWrapper);
+        response.setCurrentApplicants(pendingCount != null ? pendingCount.intValue() : 0);
         
         return response;
     }

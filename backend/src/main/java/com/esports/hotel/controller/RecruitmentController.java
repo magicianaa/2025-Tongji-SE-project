@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.esports.hotel.annotation.RoomAuthRequired;
 import com.esports.hotel.common.Result;
 import com.esports.hotel.dto.MatchingQuery;
+import com.esports.hotel.dto.RecruitmentApplicationResponse;
 import com.esports.hotel.dto.RecruitmentRequest;
 import com.esports.hotel.dto.RecruitmentResponse;
 import com.esports.hotel.service.RecruitmentService;
@@ -79,7 +80,25 @@ public class RecruitmentController {
         return Result.success(recruitmentService.getMyRecruitments(guestId));
     }
     
-    @Operation(summary = "申请加入招募", description = "通过WebSocket实时推送给发布者")
+    @Operation(summary = "获取招募的申请列表", description = "发布者查看某个招募的所有申请")
+    @GetMapping("/{recruitmentId}/applications")
+    @RoomAuthRequired
+    public Result<List<RecruitmentApplicationResponse>> getRecruitmentApplications(
+            HttpServletRequest request,
+            @PathVariable Long recruitmentId) {
+        Long guestId = (Long) request.getAttribute("guestId");
+        return Result.success(recruitmentService.getRecruitmentApplications(recruitmentId, guestId));
+    }
+    
+    @Operation(summary = "获取待处理申请数量", description = "获取我发布的所有招募的待处理申请总数")
+    @GetMapping("/applications/pending-count")
+    @RoomAuthRequired
+    public Result<Integer> getPendingApplicationsCount(HttpServletRequest request) {
+        Long guestId = (Long) request.getAttribute("guestId");
+        return Result.success(recruitmentService.getPendingApplicationsCount(guestId));
+    }
+    
+    @Operation(summary = "申请加入招募", description = "通过WebSocket实时推送给发布者，同时保存申请记录")
     @PostMapping("/{recruitmentId}/apply")
     @RoomAuthRequired
     public Result<Void> applyToRecruitment(
